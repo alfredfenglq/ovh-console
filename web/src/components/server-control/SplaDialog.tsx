@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query";
-import { useSplaList, missingSplaTypes, hasActiveSpla, SPLA_ALL_TYPES } from "@/hooks/use-server-control";
+import { useSplaList, hasActiveSpla } from "@/hooks/use-server-control";
 import { toast } from "sonner";
 
 /**
@@ -36,6 +36,8 @@ import { toast } from "sonner";
  * 这是一个公开常量，不是任何人的私有授权号。
  */
 const WINDOWS_GVLK = "W269N-WFGWX-YVC9B-4J6C9-T83GX";
+
+/** schema 的 SplaTypeEnum 全集,手填表单用 */
 const SPLA_TYPES = [
   { value: "os", label: "操作系统 (Windows Server)" },
   { value: "sqlstd", label: "SQL Server 标准版" },
@@ -57,52 +59,31 @@ export function SplaDialog({
   const [unlocking, setUnlocking] = useState(false);
   const qc = useQueryClient();
   const spla = useSplaList(serviceName, open);
-  const missing = missingSplaTypes(spla.data);
-  const unlocked = missing.length === 0;
+  // 只看 os:SQL Server 那两类是另一回事(要真买了 SQL 授权才谈得上登记),
+  // 一键按钮不碰它们,交给下面的手填表单。
+  const unlocked = hasActiveSpla(spla.data, "os");
   // 详情部分拉失败时不能断言"还没解锁" —— 宁可让按钮可点(重复提交 OVH 会自己拒),
   // 也不要因为一次限流就把已解锁的机器显示成未解锁
   const unknown = spla.isPending || spla.isError || spla.data?.partial === true;
 
-  /**
-   * 一键登记三种授权(os / sqlstd / sqlweb),全用同一个 GVLK。
-   *
-   * 只补缺的那几类:已经有有效记录的再提交一次没有意义,
-   * 只会多一条重复记录或换来 OVH 的报错。
-   * 逐条发而不是并发:OVH 对同一台机器的写操作有并发限制,
-   * 而且失败时要能说清楚是哪一类没成。
-   */
-  const unlockAll = async () => {
+  /** 只登记操作系统(os)这一类 —— 它是 Windows 模板出现与否的那道闸 */
+  const unlockWindows = async () => {
     setUnlocking(true);
-    const todo = unknown ? [...SPLA_ALL_TYPES] : missing;
-    const done: string[] = [];
-    const failed: string[] = [];
-    let firstError = "";
-    for (const t of todo) {
-      try {
-        await api.post(`/server-control/${serviceName}/spla`, {
-          type: t,
-          serialNumber: WINDOWS_GVLK,
-        });
-        done.push(t);
-      } catch (e: any) {
-        failed.push(t);
-        if (!firstError) firstError = e?.response?.data?.error || e?.message || "提交失败";
-      }
-    }
-    qc.invalidateQueries({ queryKey: qk.serverControl.spla(serviceName) });
-    setUnlocking(false);
-    if (done.length > 0) {
-      toast.success(
-        `已登记 ${done.length} 项授权(${done.join(" / ")})。刷新后重装列表里会出现 Windows 模板`,
-        { duration: 7000 }
-      );
-    }
-    if (failed.length > 0) {
-      // 逐类报,不要笼统说"失败" —— 有的类型这台机器本来就不支持
-      toast.error(`${failed.join(" / ")} 没能登记:${firstError}`, { duration: 9000 });
+    try {
+      await api.post(`/server-control/${serviceName}/spla`, {
+        type: "os",
+        serialNumber: WINDOWS_GVLK,
+      });
+      toast.success("已登记，刷新后重装列表里就会出现 Windows 模板", { duration: 7000 });
+      qc.invalidateQueries({ queryKey: qk.serverControl.spla(serviceName) });
+    } catch (e: any) {
+      toast.error(e?.response?.data?.error || e?.message || "解锁失败", { duration: 8000 });
+    } finally {
+      setUnlocking(false);
     }
   };
 
+  /** 手填表单:登记你自己买的 SPLA 授权(三种类型都能选) */
   const submit = async () => {
     const sn = serial.trim();
     if (!sn) {
@@ -114,12 +95,10 @@ export function SplaDialog({
       await api.post(`/server-control/${serviceName}/spla`, { type, serialNumber: sn });
       toast.success("许可证已提交");
       setSerial("");
+      qc.invalidateQueries({ queryKey: qk.serverControl.spla(serviceName) });
       onOpenChange(false);
     } catch (e: any) {
-      toast.error(
-        e?.response?.data?.error || e?.message || "提交失败",
-        { duration: 8000 }
-      );
+      toast.error(e?.response?.data?.error || e?.message || "提交失败", { duration: 8000 });
     } finally {
       setBusy(false);
     }
@@ -150,32 +129,27 @@ export function SplaDialog({
               )}
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              OVH 把 Windows 模板锁在「这台机器名下有授权记录」后面。点一下会把
-              <b>操作系统 / SQL 标准版 / SQL 网页版</b>三类一次登记上，
-              用的是微软<b>公开发布</b>的 Windows KMS 客户端密钥 ——
+              OVH 把 Windows 模板锁在「这台机器名下有<b>操作系统</b>授权记录」后面。
+              点一下只登记这一类，用的是微软<b>公开发布</b>的 Windows KMS 客户端密钥 ——
               它只让 OVH 的检查通过，<b>不代表你持有 Windows Server 授权</b>，
-              系统装好后仍需能连上 KMS 服务器才会真正激活。有自己的授权号请用下面的表单填。
+              系统装好后仍需能连上 KMS 服务器才会真正激活。
             </p>
-            {!unknown && !unlocked && missing.length < SPLA_ALL_TYPES.length && (
-              <p className="text-[11px] text-muted-foreground">
-                已登记：{SPLA_ALL_TYPES.filter((t) => hasActiveSpla(spla.data, t)).join(" / ")}
-                ；这次会补上 {missing.join(" / ")}
-              </p>
-            )}
+            <p className="text-[11px] text-muted-foreground">
+              SQL Server 的两类授权不在这里 —— 那要你真的买了 SQL 授权才谈得上登记，
+              请用下面的表单填自己的序列号。
+            </p>
             <Button
               className="w-full"
               variant={unlocked && !unknown ? "outline" : "default"}
               disabled={unlocking || busy || (unlocked && !unknown)}
-              onClick={unlockAll}
+              onClick={unlockWindows}
             >
               {unlocking && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
               {spla.isPending
                 ? "检查中…"
                 : unlocked && !unknown
                   ? "已解锁，无需重复登记"
-                  : missing.length < SPLA_ALL_TYPES.length && !unknown
-                    ? `补登记 ${missing.length} 项授权`
-                    : "一键解锁 Windows 安装"}
+                  : "一键解锁 Windows 安装"}
             </Button>
             {spla.isError && (
               <p className="text-[11px] text-amber-600 dark:text-amber-500">
@@ -214,8 +188,9 @@ export function SplaDialog({
           <div className="border border-amber-500/40 bg-amber-500/10 rounded-xl p-2.5 flex gap-2">
             <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground">
-              填你自己购买的 SPLA 授权序列号。这一步是把授权登记到 OVH 名下，
-              不是申请或生成授权 —— 填别人的或网上找的密钥会被 OVH 拒绝。
+              这里填你自己购买的 SPLA 授权序列号（SQL Server 的两类只能走这里）。
+              这一步是把授权<b>登记</b>到 OVH 名下，不是申请或生成授权 ——
+              登记本身不会让你凭空拥有授权。
             </p>
           </div>
         </div>

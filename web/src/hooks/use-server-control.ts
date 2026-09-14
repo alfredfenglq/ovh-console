@@ -1584,11 +1584,8 @@ export function useSplaList(serviceName: string | null, enabled = true) {
   });
 }
 
-/** SplaTypeEnum 全集。一键登记会把这三种都建上。 */
-export const SPLA_ALL_TYPES = ["os", "sqlstd", "sqlweb"] as const;
-
 /**
- * 某一类授权是不是已经登记且有效。
+ * 某一类 SPLA 授权是不是已经登记且有效。
  *
  * SplaStatusEnum 只有 used / waitingToCheck / terminated 三个值。
  * waitingToCheck 也算数 —— OVH 还在核,但记录已经建上了,重复提交没有意义。
@@ -1598,9 +1595,4 @@ export function hasActiveSpla(r: SplaListResult | undefined, type: string): bool
   return r.list.some(
     (x) => x.type === type && String(x.status || "").toLowerCase() !== "terminated"
   );
-}
-
-/** 还缺哪几类(用于决定按钮是否可点、以及这次要提交哪几条) */
-export function missingSplaTypes(r?: SplaListResult): string[] {
-  return SPLA_ALL_TYPES.filter((t) => !hasActiveSpla(r, t));
 }
