@@ -285,11 +285,12 @@ func (e *RenewDualError) Error() string {
 	return e.Attempts[len(e.Attempts)-1].Error
 }
 
-// putServiceRenew 按官方文档修改单服务续费方式:
-// 载荷 = service.RenewType 文档字段原样(handler 按模式取值,不删不改);
-// 路由 = 文档给出的两条等价端点,先老的 PUT .../{sn}/serviceInfos,
-// 被 400 拒时换新的 PUT /services/{serviceId},载荷不变。
-// 两条都被拒 = OVH live 校验与其文档冲突,两级原始错误全部带回。
+// putServiceRenew 修改单服务续费方式:
+// 路由 = 文档的两条等价端点:先老的 PUT .../{sn}/serviceInfos(载荷 = 文档的
+// service.RenewType 原样),被 400 拒时换新的 PUT /services/{serviceId} ——
+// 该路由 live 不认 renew.automatic(schema 第四处滞后),载荷按 live 契约去掉
+// automatic、保留 manualPayment(手动续费的正确表达)。
+// 两条都被拒 = OVH live 与其文档冲突,两级原始错误全部带回。
 // 非 400(权限/不存在/状态)直接冒泡,不换路由。
 func putServiceRenew(client *ovhsdk.Client, legacyPath string, serviceId *int64, next map[string]interface{}) error {
 	routes := []struct {
@@ -306,7 +307,19 @@ func putServiceRenew(client *ovhsdk.Client, legacyPath string, serviceId *int64,
 	}
 	dual := &RenewDualError{}
 	for _, r := range routes {
-		err := client.Put(r.path, map[string]interface{}{"renew": next}, nil)
+		payload := next
+		if r.name == "services" {
+			// 实测(US 独服 2026-10-12):/services/{serviceId} 不认 renew.automatic
+			// ("Unknown parameter",而 schema 仍写着 service.RenewType —— 第四处文档滞后)。
+			// 该路由的手动续费 = manualPayment 键 + 无 automatic。
+			payload = make(map[string]interface{}, len(next))
+			for k, v := range next {
+				if k != "automatic" {
+					payload[k] = v
+				}
+			}
+		}
+		err := client.Put(r.path, map[string]interface{}{"renew": payload}, nil)
 		if err == nil {
 			return nil
 		}
