@@ -14,6 +14,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation, Trans } from "react-i18next";
 import { PageHeader } from "@/components/common/PageHeader";
+import { useSkin } from "@/lib/skin";
+import { PearlPanel, PearlPanelHead } from "@/components/pearl/ListKit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,6 +146,7 @@ function IntervalEditor({ id, value }: { id: string; value: number }) {
 
 function QueuePage() {
   const { t } = useTranslation();
+  const skin = useSkin();
   const queue = useQueueList();
   // 每条链路上一轮的耗时,用来回答"我到底卡在哪一步"
   const timings = usePurchaseTimings();
@@ -222,54 +225,9 @@ function QueuePage() {
     queue.refetch();
   };
 
-  return (
-    <div className="space-y-3 sm:space-y-6">
-      <PageHeader
-        icon={ClipboardList}
-        title={t("queue.title")}
-        description={t("queue.description")}
-        action={
-          // 必须 flex-wrap:PageHeader 外层允许换行,内层不换的话整排按钮保持
-          // max-content 宽度,在 390px 上会被挤出左边界(实测 left=-19px)。
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="w-4 h-4" />
-              {t("queue.createTask")}
-            </Button>
-            <Button variant="outline" onClick={() => queue.refetch()} disabled={queue.isFetching}>
-              <RefreshCw className={`w-4 h-4 ${queue.isFetching ? "animate-spin" : ""}`} />
-              {t("queue.refresh")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)))}
-              disabled={items.length === 0}
-            >
-              {allSelected ? t("queue.unselectAll") : t("queue.selectAll")}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setShowClearDialog(true)}
-              disabled={items.length === 0}
-            >
-              <Trash2 className="w-4 h-4" />
-              {t("queue.clear")}
-            </Button>
-          </div>
-        }
-      />
-
-      {/* 每条链路上一轮的耗时/结论读不到时,行里的 TimingChip 和「上一轮 无货/已下单/出错」
-          会整块消失,看起来像"这条任务从来没跑过"。这块只是辅助信息,任务本身照常在跑,
-          给一条提示、别让用户误读那片空白就够。 */}
-      {timings.isError && items.length > 0 && (
-        <LoadFailedBanner
-          title={t("queue.timingsFailedTitle")}
-          error={timings.error}
-          onRetry={() => timings.refetch()}
-        />
-      )}
-
+  // 队列状态块(pending/error/空态/列表)—— 两套皮肤共用,只换外壳
+  const queueBody = (
+    <>
       {queue.isPending ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -360,6 +318,67 @@ function QueuePage() {
             />
           ))}
         </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className="space-y-3 sm:space-y-6">
+      <PageHeader
+        icon={ClipboardList}
+        title={t("queue.title")}
+        description={t("queue.description")}
+        action={
+          // 必须 flex-wrap:PageHeader 外层允许换行,内层不换的话整排按钮保持
+          // max-content 宽度,在 390px 上会被挤出左边界(实测 left=-19px)。
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4" />
+              {t("queue.createTask")}
+            </Button>
+            <Button variant="outline" onClick={() => queue.refetch()} disabled={queue.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${queue.isFetching ? "animate-spin" : ""}`} />
+              {t("queue.refresh")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)))}
+              disabled={items.length === 0}
+            >
+              {allSelected ? t("queue.unselectAll") : t("queue.selectAll")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowClearDialog(true)}
+              disabled={items.length === 0}
+            >
+              <Trash2 className="w-4 h-4" />
+              {t("queue.clear")}
+            </Button>
+          </div>
+        }
+      />
+
+      {/* 每条链路上一轮的耗时/结论读不到时,行里的 TimingChip 和「上一轮 无货/已下单/出错」
+          会整块消失,看起来像"这条任务从来没跑过"。这块只是辅助信息,任务本身照常在跑,
+          给一条提示、别让用户误读那片空白就够。 */}
+      {timings.isError && items.length > 0 && (
+        <LoadFailedBanner
+          title={t("queue.timingsFailedTitle")}
+          error={timings.error}
+          onRetry={() => timings.refetch()}
+        />
+      )}
+
+      {skin === "pearl" ? (
+        <PearlPanel>
+          <PearlPanelHead eyebrow={t("queue.title")} meta={`${items.length}`} />
+          <div className="panel-body" style={{ paddingTop: 14 }}>
+            <div className="space-y-3">{queueBody}</div>
+          </div>
+        </PearlPanel>
+      ) : (
+        queueBody
       )}
 
       <Dialog open={showBatchDelete} onOpenChange={setShowBatchDelete}>
