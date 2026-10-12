@@ -84,9 +84,7 @@ export function DashboardPearl() {
           <h1 className="page-title">{t(greetingKey())}</h1>
           <p className="page-desc">{t("dashboard.subtitle")}</p>
         </div>
-        <div className="page-actions">
-          <UpdateButton check={update.data} />
-        </div>
+
       </header>
 
       <div className="bento-grid">
@@ -178,7 +176,11 @@ export function DashboardPearl() {
           </div>
           <div className="side-foot">
             <span className="faint">{t("dashboard.systemVersion")}</span>
-            <span className="mono-time">v{version.data || "—"}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              {/* 更新按钮跟随版本号:没新版本时组件返回 null,只显示版本 */}
+              <UpdateButton check={update.data} />
+              <span className="mono-time">v{version.data || "—"}</span>
+            </span>
           </div>
         </section>
 
