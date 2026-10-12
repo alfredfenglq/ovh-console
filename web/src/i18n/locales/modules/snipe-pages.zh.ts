@@ -314,6 +314,7 @@ export const snipePagesZh = {
     updateFailedTitle: "更新检查失败:{{error}}(点击重试)",
     updateFailed: "更新检查失败",
     cpu: "CPU",
+    usedFree: "已用 {{used}} · 剩余 {{free}}",
     cores: "{{n}} 核心",
     memory: "内存",
     disk: "磁盘",

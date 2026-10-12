@@ -204,10 +204,15 @@ export function DashboardPearl() {
               <span className="readout-value tnum">
                 {sys.data ? sys.data.memory.percent.toFixed(0) : "—"}
                 <small>%</small>
-                <small style={{ marginLeft: 8 }}>
-                  {sys.data ? `${fmtBytes(sys.data.memory.usedBytes)}/${fmtBytes(sys.data.memory.totalBytes)}` : ""}
-                </small>
               </span>
+              {sys.data && (
+                <span className="readout-sub">
+                  {t("dashboard.usedFree", {
+                    used: fmtBytes(sys.data.memory.usedBytes),
+                    free: fmtBytes(sys.data.memory.totalBytes - sys.data.memory.usedBytes),
+                  })}
+                </span>
+              )}
             </div>
             <div className="readout">
               <span className="readout-label">
@@ -218,6 +223,14 @@ export function DashboardPearl() {
                 {sys.data ? sys.data.disk.percent.toFixed(0) : "—"}
                 <small>%</small>
               </span>
+              {sys.data && (
+                <span className="readout-sub">
+                  {t("dashboard.usedFree", {
+                    used: fmtBytes(sys.data.disk.usedBytes),
+                    free: fmtBytes(sys.data.disk.totalBytes - sys.data.disk.usedBytes),
+                  })}
+                </span>
+              )}
             </div>
           </div>
         </section>

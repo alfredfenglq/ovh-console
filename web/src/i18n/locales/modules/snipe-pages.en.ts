@@ -314,6 +314,7 @@ export const snipePagesEn = {
     updateFailedTitle: "Update check failed: {{error}} (click to retry)",
     updateFailed: "Update check failed",
     cpu: "CPU",
+    usedFree: "Used {{used}} · {{free}} free",
     cores: "{{n}} cores",
     memory: "Memory",
     disk: "Disk",

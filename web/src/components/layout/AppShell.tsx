@@ -122,7 +122,7 @@ export function AppShell() {
           mobile && mobileOpen && "is-mobile-open",
         )}
       >
-        <aside className="rail">
+        <aside className="rail m-rail">
           <Link to="/" className="rail-brand" aria-label={t("nav.appName")}>
             <span className="brand-mark">
               <Shield className="w-4 h-4" strokeWidth={2} />
