@@ -163,11 +163,13 @@ export function AppShell() {
           </nav>
 
           <div className="rail-foot">
+            {/* 收起态也保留版本与 GitHub 图标(常显,不依赖 label) */}
             <button
               type="button"
               className="nav-item"
               onClick={toggleCollapse}
               aria-label={collapsed ? t("shell.expandRail") : t("shell.collapseRail")}
+              title={collapsed ? t("shell.expandRail") : t("shell.collapseRail")}
             >
               {collapsed && !mobile ? (
                 <PanelLeftOpen className="nav-ico" size={16} strokeWidth={1.9} />
@@ -176,7 +178,7 @@ export function AppShell() {
               )}
               <span className="nav-label">{collapsed && !mobile ? "" : t("shell.collapseRail")}</span>
             </button>
-            {/* 冠名:GitHub 仓库 + 作者。收起态只剩图标,label 被他的规则自动隐藏 */}
+            {/* 冠名:GitHub 仓库 + 作者(可乐/cola)。收起态 GitHub 图标仍在,title 提示仓库地址 */}
             <a
               href="https://github.com/gokele/ovh"
               target="_blank"
@@ -186,12 +188,21 @@ export function AppShell() {
             >
               <Github className="nav-ico" size={16} strokeWidth={1.9} />
               <span className="nav-label">{t("shell.cola")}</span>
-            </a>
-            {version && (
-              <div className="nav-item" style={{ cursor: "default" }}>
-                <span className="nav-label" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
+              {!collapsed && version && (
+                <span
+                  className="tnum"
+                  style={{ marginLeft: "auto", fontSize: 11, color: "var(--ink-faint)", fontWeight: 500 }}
+                >
                   v{version}
                 </span>
+              )}
+            </a>
+            {collapsed && !mobile && version && (
+              <div
+                className="tnum"
+                style={{ textAlign: "center", fontSize: 10.5, color: "var(--ink-faint)", padding: "2px 0 4px" }}
+              >
+                v{version}
               </div>
             )}
           </div>
