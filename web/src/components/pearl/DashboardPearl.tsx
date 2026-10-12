@@ -92,7 +92,16 @@ export function DashboardPearl() {
             <span className="eyebrow">{t("dashboard.kpi.activeQueues")}</span>
             <span className="bento-meta">{stats.isPending ? "…" : s ? `SNIPER / ${s.totalServers ?? 0} SRV` : "—"}</span>
           </div>
-          <div className="hero-body">
+          <div className="hero-body relative">
+            {/* 3D 火箭插图(3dicons.co,CC0):点睛 hero 右侧留白;仅 md+ 显示,
+                浮动动画只动 transform,偏好减少动效时静止 */}
+            <img
+              src="/illustrations/rocket-3d.png"
+              alt=""
+              aria-hidden="true"
+              className="hero-illo hidden md:block"
+              draggable={false}
+            />
             <div className="hero-figure">
               <div className="metric metric-xl">
                 <span className="metric-figure">
