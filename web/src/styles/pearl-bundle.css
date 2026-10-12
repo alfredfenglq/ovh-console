@@ -162,3 +162,7 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
   border-radius: 0;
   box-shadow: none;
 }
+
+
+/* 收起态账户圆钮(取代之前的 CSS 藏字方案:AccountSwitcher 原生 iconOnly 形态) */
+[data-skin="pearl"] .app-frame.is-collapsed .rail-account { display: flex; justify-content: center; }

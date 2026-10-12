@@ -134,8 +134,8 @@ export function AppShell() {
           </Link>
 
           {/* 账户切换在导航最上面:它决定下面每页看到的是哪个站点的数据 */}
-          <div className="px-3 flex-none">
-            <AccountSwitcher onNavigate={() => setMobileOpen(false)} />
+          <div className="rail-account px-3 flex-none">
+            <AccountSwitcher iconOnly={collapsed && !mobile} onNavigate={() => setMobileOpen(false)} />
           </div>
 
           <nav className="rail-nav" ref={navRef}>

@@ -22,10 +22,13 @@ import { cn } from "@/lib/utils";
 export function AccountSwitcher({
   onNavigate,
   compact,
+  iconOnly,
 }: {
   onNavigate?: () => void;
   /** 顶栏用的紧凑版:去掉「当前账户」标题和外边距,高度压到 36px 塞进 48px 的顶栏 */
   compact?: boolean;
+  /** 珍珠皮肤收起导航轨:只显示区域徽章圆钮,弹层照常可切换 */
+  iconOnly?: boolean;
 }) {
   const accounts = useAccounts();
   const { t } = useTranslation();
@@ -67,7 +70,9 @@ export function AccountSwitcher({
 
 
   if (accounts.isPending) {
-    return <div className="mx-3 mt-3 h-[52px] rounded-lg bg-muted animate-pulse" />;
+    return (
+      <div className="mx-3 mt-3 h-[52px] rounded-lg bg-muted animate-pulse" style={iconOnly ? { width: 36, marginLeft: "auto", marginRight: "auto" } : undefined} />
+    );
   }
 
   // 读取失败 ≠ 一个账户都没有。这里是全站唯一的账户入口,一旦塌成虚线的
@@ -77,7 +82,7 @@ export function AccountSwitcher({
   // 失败必须说成失败,并且给一个重试口。
   if (accounts.isError) {
     return (
-      <div className={compact ? "" : "mx-3 mt-3"}>
+      <div className={compact || iconOnly ? "" : "mx-3 mt-3"}>
         <LoadFailed
           title={t("shell.account.loadFailed")}
           error={accounts.error}
@@ -93,17 +98,106 @@ export function AccountSwitcher({
       <Link
         to="/settings"
         onClick={onNavigate}
+        title={t("shell.account.add")}
         className={cn(
           "flex items-center gap-2 px-2.5 rounded-lg border border-dashed border-border text-[13px] text-muted-foreground hover:bg-muted transition-colors",
-          compact ? "h-9" : "mx-3 mt-3 py-2"
+          compact ? "h-9" : iconOnly ? "h-9 w-9 mx-auto mt-3 justify-center" : "mx-3 mt-3 py-2"
         )}
       >
         <Plus className="w-4 h-4" />
-        {t("shell.account.add")}
+        {!iconOnly && t("shell.account.add")}
       </Link>
     );
   }
 
+  if (iconOnly) {
+    return (
+      <div className="mt-3 flex justify-center">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              className="h-9 w-9 rounded-lg border border-border hover:bg-muted transition-colors flex items-center justify-center"
+              title={active ? `${active.name} · ${active.zone}` : t("shell.account.switchHint")}
+            >
+              {active ? (
+                <span className={cn("px-1 py-px rounded text-[10px] font-semibold tracking-wide", zoneStyle(active.zone).badge)}>
+                  {active.zone}
+                </span>
+              ) : (
+                <ChevronsUpDown className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-[248px] p-1">
+            <p className="px-2 pt-1.5 pb-2 text-[10.5px] text-muted-foreground leading-snug border-b border-border mb-1">
+              {t("shell.account.panelNote")}
+            </p>
+            <div className="max-h-[45vh] sm:max-h-[280px] overflow-y-auto">
+              {grouped.map(({ region, label, accounts }) => (
+                <div key={region} className="mb-0.5 last:mb-0">
+                  {grouped.length > 1 && (
+                    <div className="px-2 pt-1.5 pb-1 text-[10px] font-semibold text-muted-foreground tracking-wide">
+                      {label}
+                    </div>
+                  )}
+                  {accounts.map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => {
+                        setActive(a.id);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-2.5 sm:py-1.5 rounded-md text-left text-[13px] transition-colors",
+                        a.id === activeId ? "bg-secondary" : "hover:bg-muted"
+                      )}
+                    >
+                      <Check
+                        className={cn(
+                          "w-3.5 h-3.5 flex-shrink-0",
+                          a.id === activeId ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium truncate">
+                          {a.name}
+                          {a.isDefault && (
+                            <span className="ml-1 text-[10px] font-normal text-muted-foreground">{t("shell.account.defaultBadge")}</span>
+                          )}
+                        </span>
+                        <span className="block text-[11px] text-muted-foreground truncate">
+                          {zoneName(a.zone)}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "flex-shrink-0 px-1.5 py-px rounded text-[10px] font-semibold tracking-wide",
+                          zoneStyle(a.zone).badge
+                        )}
+                      >
+                        {a.zone}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <Link
+              to="/settings"
+              onClick={() => {
+                setOpen(false);
+                onNavigate?.();
+              }}
+              className="flex items-center gap-2 px-2 py-1.5 mt-1 rounded-md text-[13px] text-muted-foreground hover:bg-muted border-t border-border pt-2 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t("shell.account.manage")}
+            </Link>
+          </PopoverContent>
+        </Popover>
+      </div>
+    );
+  }
   return (
     <div className={compact ? "min-w-0" : "px-3 mt-3"}>
       {!compact && (
