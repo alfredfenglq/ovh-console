@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { PartialNotice } from "@/components/common/PartialNotice";
 import { LoadFailed, LoadFailedBanner } from "@/components/common/LoadFailed";
 import { useAccountInfo, useRefunds, useEmails, useOrders, type EmailHistoryEntry, type OrderRecord } from "@/hooks/use-account";
+import { useSkin } from "@/lib/skin";
 
 /** 账户管理：顶部 3 张 KPI + Tabs (邮件 / 订单 / 退款) */
 export const Route = createFileRoute("/account")({
@@ -116,6 +117,28 @@ function KpiCard({
   loading?: boolean;
   badge?: React.ReactNode;
 }) {
+  const skin = useSkin();
+  if (skin === "pearl") {
+    return (
+      <div className="app-card metric metric-s" style={{ padding: "16px 18px", minWidth: 0 }}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="metric-label">
+            <Icon size={13} strokeWidth={1.9} />
+            <span style={{ marginLeft: 6 }}>{label}</span>
+          </span>
+          {badge}
+        </div>
+        {loading ? (
+          <Skeleton className="h-6 w-32 mt-1" />
+        ) : (
+          <span className="metric-figure" style={{ fontSize: 22, letterSpacing: "-.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={value}>
+            {value || "—"}
+          </span>
+        )}
+        {sub ? <span className="cell-sub">{sub}</span> : null}
+      </div>
+    );
+  }
   return (
     <Card>
       <CardContent className="p-5 flex items-start gap-3">
