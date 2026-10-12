@@ -309,12 +309,14 @@ func putServiceRenew(client *ovhsdk.Client, legacyPath string, serviceId *int64,
 	for _, r := range routes {
 		payload := next
 		if r.name == "services" {
-			// 实测(US 独服 2026-10-12):/services/{serviceId} 不认 renew.automatic
-			// ("Unknown parameter",而 schema 仍写着 service.RenewType —— 第四处文档滞后)。
-			// 该路由的手动续费 = manualPayment 键 + 无 automatic。
+			// 实测(US 独服 2026-10-12,两轮 Unknown parameter 逐键排除):
+			// /services/{serviceId} 的 renew 只认 {manualPayment, forced, period} ——
+			// automatic 与 deleteAtExpiration 均报 Unknown parameter(schema 四处滞后)。
+			// 新契约:manualPayment=false=自动续费,true=手动续费;
+			// 到期终止由独立的 terminationPolicy 表达,不在 renew 里。
 			payload = make(map[string]interface{}, len(next))
 			for k, v := range next {
-				if k != "automatic" {
+				if k != "automatic" && k != "deleteAtExpiration" {
 					payload[k] = v
 				}
 			}
