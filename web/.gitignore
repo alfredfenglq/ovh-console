@@ -28,3 +28,5 @@ src/routeTree.gen.ts
 # env
 .env
 .env.local
+.env.*.local
+*.local
