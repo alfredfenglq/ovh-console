@@ -3,7 +3,7 @@ import { useTranslation, Trans } from "react-i18next";
 import { isOrderable } from "@/lib/availability";
 import {
   Server, RefreshCw, Search, Bell, ShoppingCart, Cpu, MemoryStick, HardDrive, Wifi,
-  Filter, MapPin, Globe } from "lucide-react";
+  Filter, MapPin, Globe, ArrowUpDown, ArrowUpNarrowWide, ArrowDownWideNarrow } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -119,6 +119,8 @@ function ServersPage() {
 
   const [search, setSearch] = useState("");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
+  // 价格排序:default=目录原序;asc/desc 按 priceMap 的含税月费(无价格的排最后,不消失)
+  const [priceSort, setPriceSort] = useState<"default" | "asc" | "desc">("default");
   const [detailPlanCode, setDetailPlanCode] = useState<string | null>(null);
 
   const list = q.data || [];
@@ -143,6 +145,15 @@ function ServersPage() {
     }
     return out;
   }, [list, search, onlyAvailable, availMap]);
+
+  // 价格排序独立于筛选:目录价格是异步到的,priceMap 更新后顺序自动跟上
+  const sorted = useMemo(() => {
+    if (priceSort === "default") return filtered;
+    const priceOf = (pc: string) => priceMap[pc]?.total ?? Infinity;
+    return [...filtered].sort((a, b) =>
+      priceSort === "asc" ? priceOf(a.planCode) - priceOf(b.planCode) : priceOf(b.planCode) - priceOf(a.planCode)
+    );
+  }, [filtered, priceSort, priceMap]);
 
   const detailServer = detailPlanCode ? list.find((s) => s.planCode === detailPlanCode) || null : null;
 
@@ -204,6 +215,17 @@ function ServersPage() {
             <Filter className="w-3.5 h-3.5" />
             {t("servers.onlyAvailable")}
           </Button>
+          {/* 价格排序:三态轮换(默认→升→降),asc/desc 高亮为蓝 */}
+          <Button
+            variant={priceSort === "default" ? "outline" : "default"}
+            size="sm"
+            className="rounded-full flex-shrink-0"
+            onClick={() => setPriceSort((v) => (v === "default" ? "asc" : v === "asc" ? "desc" : "default"))}
+            title={t("servers.sortPriceTitle")}
+          >
+            {priceSort === "asc" ? <ArrowUpNarrowWide className="w-3.5 h-3.5" /> : priceSort === "desc" ? <ArrowDownWideNarrow className="w-3.5 h-3.5" /> : <ArrowUpDown className="w-3.5 h-3.5" />}
+            {priceSort === "default" ? t("servers.sortPrice") : priceSort === "asc" ? t("servers.sortPriceAsc") : t("servers.sortPriceDesc")}
+          </Button>
           {/* 价格地区不再单独选:它以前只换价格、不换机型列表,而下拉里写着「US · 美国」,
               看上去像是切到了美区目录 —— 实际列表还是欧区的 planCode(24sk602 vs 美区的
               24sk602-v1-us),照着它下单必然被拒。现在币种直接跟当前账户的子公司走。 */}
@@ -217,7 +239,7 @@ function ServersPage() {
             />
           </span>
           <span className="text-[11px] sm:text-[12px] text-muted-foreground whitespace-nowrap">
-            {q.isPending ? t("servers.loadingShort") : t("servers.totalCount", { n: filtered.length })}
+            {q.isPending ? t("servers.loadingShort") : t("servers.totalCount", { n: sorted.length })}
           </span>
           </div>
         </div>
@@ -271,7 +293,7 @@ function ServersPage() {
             onRetry={() => q.refetch()}
           />
         </Card>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <Card>
           <EmptyState
             icon={Server}
@@ -281,7 +303,7 @@ function ServersPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((srv) => (
+          {sorted.map((srv) => (
             <ServerCard
               key={srv.planCode}
               server={srv}
