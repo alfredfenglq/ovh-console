@@ -104,7 +104,7 @@ export function UpdateButton({ check }: { check?: UpdateCheck }) {
   if (check?.inContainer) {
     return (
       <span
-        className="inline-flex items-center gap-1.5 text-[11px] text-primary cursor-help"
+        className="inline-flex items-center gap-1.5 text-[11px] text-primary cursor-help whitespace-nowrap"
         title={check.updateHint || t("commons.update.containerHint")}
       >
         <Sparkles className="w-3 h-3" />
