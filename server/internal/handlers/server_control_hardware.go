@@ -568,7 +568,7 @@ func UpdateServiceRenewal(state *app.State) gin.HandlerFunc {
 		// "Try to alter read-only properties: status, creation, expiration"
 		if err := putServiceRenew(client, "/dedicated/server/"+svc+"/serviceInfos", next); err != nil {
 			state.Logger.Error("修改服务器 "+svc+" 续费策略失败: "+err.Error(), "server_control")
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": ovh.Explain(err)})
+			respondRenewError(c, state, svc, err)
 			return
 		}
 		state.Logger.Info("服务器 "+svc+" 续费策略已更新: mode="+body.Mode, "server_control")

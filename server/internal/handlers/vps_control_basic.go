@@ -354,7 +354,7 @@ func UpdateVpsRenewal(state *app.State) gin.HandlerFunc {
 		}
 		// services.Service 只有 renew 可写,整对象发回去会被 400
 		if err := putServiceRenew(client, "/vps/"+svc+"/serviceInfos", next); err != nil {
-			respondOVHError(c, err)
+			respondRenewError(c, state, svc, err)
 			return
 		}
 		state.Logger.Info("VPS "+svc+" 续费策略已更新: "+body.Mode, "vps_control")

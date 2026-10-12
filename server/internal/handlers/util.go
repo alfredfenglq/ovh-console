@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"sync"
 
@@ -267,49 +268,99 @@ func idToString(v interface{}) string {
 	}
 }
 
+// RenewLadderAttempt 一次组合尝试的留痕(payload 键名 + 结果),全灭时随响应带回,
+// 否则只有最后一级错误可见,中间每级被什么挡住完全丢失(实测排障时就吃了这个亏)。
+type RenewLadderAttempt struct {
+	Payload []string `json:"payload"`
+	Error   string   `json:"error"`
+}
+
+// RenewLadderError 全部组合都被拒。Attempts 是逐级留痕。
+type RenewLadderError struct {
+	Attempts []RenewLadderAttempt
+}
+
+func (e *RenewLadderError) Error() string {
+	if len(e.Attempts) == 0 {
+		return "renew 全部组合被拒"
+	}
+	last := e.Attempts[len(e.Attempts)-1]
+	return fmt.Sprintf("renew 全部 %d 种组合被拒,最后错误: %s", len(e.Attempts), last.Error)
+}
+
 // putServiceRenew 发 renew 修改(独服 / VPS 的 PUT .../serviceInfos 共用)。
 //
-// OVH 对 renew 载荷的校验在持续收紧,且文档(schema)一直滞后 —— 实测三族拒绝:
-// 参数废弃(manualPayment 不可发)、模式键同现即拒(固定名单模板)、
-// schema 必填(deleteAtExpiration 必须在场)。经验契约(US 独服实测 2026-10-12):
-//   {automatic:true, deleteAtExpiration:false}  → auto 可用
-//   {automatic:false, deleteAtExpiration:false} → 被判冲突(全 false 无模式)
-//   {automatic 缺席, deleteAtExpiration:false}  → 未被拒 —— 疑似新契约的手动表达
-// 所以按组合逐级降级,任何"400+renew 字段族"的拒绝都换下一级组合:
-//   0 原始载荷(含 manualPayment,老区契约)
-//   1 去 manualPayment(EU/CA 的新契约)
-//   2 再去 automatic(US 的手动表达:automatic 缺席)
-// 非 400(权限/不存在/状态)直接冒泡,不浪费重试。
+// OVH 对 renew 载荷的校验持续收紧且文档一直滞后,US 实测已出现三族拒绝
+// (参数废弃 / 模式键同现即拒 / schema 必填),auto 组合可用而 manual 的
+// 已知组合全灭。这里把"能表达目标语义的键组合"按从全到简逐级试:
+//   0 原始载荷(老区契约,含 manualPayment)
+//   1 去 manualPayment(EU/CA 新契约)
+//   2 再去 automatic(试探:automatic 缺席)
+//   3 再去 period(试探:manual 状态下 period 冲突)
+//   4 最小双键 {automatic, deleteAtExpiration}(去掉 forced 透传)
+// 任一级成功即返回;全部被拒返回 RenewLadderError(逐级留痕)。
+// 非"400+renew 字段族"的错误(权限/不存在/状态)直接冒泡,不继续试。
 func putServiceRenew(client *ovhsdk.Client, path string, next map[string]interface{}) error {
 	attempts := []map[string]interface{}{next}
-	if _, has := next["manualPayment"]; has {
-		a1 := make(map[string]interface{}, len(next))
-		for k, v := range next {
-			if k != "manualPayment" {
-				a1[k] = v
+	drop := func(src map[string]interface{}, keys ...string) map[string]interface{} {
+		out := make(map[string]interface{}, len(src))
+	OUT:
+		for k, v := range src {
+			for _, d := range keys {
+				if k == d {
+					continue OUT
+				}
 			}
+			out[k] = v
 		}
-		attempts = append(attempts, a1)
-		a2 := make(map[string]interface{}, len(a1))
-		for k, v := range a1 {
-			if k != "automatic" {
-				a2[k] = v
-			}
-		}
-		attempts = append(attempts, a2)
+		return out
 	}
-	var lastErr error
+	a1 := drop(next, "manualPayment")
+	a2 := drop(a1, "automatic")
+	a3 := drop(a2, "period")
+	a4 := map[string]interface{}{}
+	if v, ok := next["automatic"]; ok {
+		a4["automatic"] = v
+	}
+	if v, ok := next["deleteAtExpiration"]; ok {
+		a4["deleteAtExpiration"] = v
+	}
+	attempts = append(attempts, a1, a2, a3, a4)
+
+	lad := &RenewLadderError{}
 	for _, a := range attempts {
+		keys := make([]string, 0, len(a))
+		for k := range a {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 		err := client.Put(path, map[string]interface{}{"renew": a}, nil)
 		if err == nil {
 			return nil
 		}
-		lastErr = err
+		lad.Attempts = append(lad.Attempts, RenewLadderAttempt{Payload: keys, Error: err.Error()})
 		if !ovh.IsRenewPayloadRejected(err) {
 			return err
 		}
 	}
-	return lastErr
+	return lad
+}
+
+
+// respondRenewError putServiceRenew 失败的统一出口:梯子全灭时把逐级组合与
+// 各级原始错误一并带回(前端提示仍用汇总文案),便于一次定位 OVH 校验的真实要求。
+func respondRenewError(c *gin.Context, state *app.State, svc string, err error) {
+	var lad *RenewLadderError
+	if errors.As(err, &lad) {
+		state.Logger.Warn(fmt.Sprintf("renew 组合梯全灭(%s): %+v", svc, lad.Attempts), "server_control")
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success":  false,
+			"error":    ovh.Explain(errors.New(lad.Error())),
+			"attempts": lad.Attempts,
+		})
+		return
+	}
+	respondOVHError(c, err)
 }
 
 // respondOVHError 统一的 OVH 写操作错误响应:
