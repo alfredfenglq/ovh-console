@@ -70,6 +70,9 @@ func hintFor(e *ovhsdk.APIError) string {
 
 	// —— 先按原文认。这些说法的含义与状态码无关 ——
 	switch {
+	case strings.Contains(lower, "conflicting arguments") && strings.Contains(lower, "manualpayment"):
+		// 三键同现被拒(与参数废弃同一族):新版已自动去参降级;到这里说明两级都被拒
+		return "OVH 对该服务的续费参数校验收紧了。程序已自动按两级降级契约重试仍被拒:请改用「自动续费」,或直接在 OVH 控制台操作"
 	case strings.Contains(lower, "parameter isn't available anymore"):
 		// OVH 的参数废弃拒绝(官方 schema 还没同步)。新版本已自动去掉废弃参数
 		// 重试;走到这里说明去掉后仍被拒 —— 这个服务在新的计费体系里不再接受
@@ -146,6 +149,21 @@ func IsParamUnavailable(err error, param string) bool {
 	}
 	return strings.Contains(strings.ToLower(err.Error()),
 		strings.ToLower(param)+" parameter isn't available anymore")
+}
+
+// IsRenewConflict 认出 OVH 对 renew 载荷的参数冲突/废弃拒绝(400):
+// 两种实测措辞 —— "manualPayment parameter isn't available anymore"(参数废弃)
+// 与 "Conflicting arguments: automatic, deleteAtExpiration and manualPayment"
+// (三键同现即拒)。共同特征:400 + 提到 manualPayment。
+// 触发 putServiceRenew 的去参降级重试。
+func IsRenewConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	lower := strings.ToLower(err.Error())
+	return strings.Contains(lower, "manualpayment") &&
+		(strings.Contains(lower, "conflicting arguments") ||
+			strings.Contains(lower, "isn't available anymore"))
 }
 
 // IsTaskConflict 认出 OVH 的任务冲突/进行中拒绝。

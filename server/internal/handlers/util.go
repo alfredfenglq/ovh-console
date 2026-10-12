@@ -277,16 +277,33 @@ func idToString(v interface{}) string {
 // manualPayment 在新计费体系里已无语义,去掉不算改行为。
 func putServiceRenew(client *ovhsdk.Client, path string, next map[string]interface{}) error {
 	err := client.Put(path, map[string]interface{}{"renew": next}, nil)
-	if err == nil || !ovh.IsParamUnavailable(err, "manualPayment") {
+	if err == nil || !ovh.IsRenewConflict(err) {
 		return err
 	}
+	// 降级一:去掉 manualPayment。新契约里手动续费就是 automatic=false +
+	// deleteAtExpiration=false;且 OVH 的 "Conflicting arguments" 是三键同现即拒,
+	// 去掉后只剩两个键,不再触发该规则。
 	fallback := make(map[string]interface{}, len(next))
 	for k, v := range next {
 		if k != "manualPayment" {
 			fallback[k] = v
 		}
 	}
-	return client.Put(path, map[string]interface{}{"renew": fallback}, nil)
+	if err = client.Put(path, map[string]interface{}{"renew": fallback}, nil); err == nil {
+		return nil
+	}
+	if !ovh.IsRenewConflict(err) {
+		return err
+	}
+	// 降级二(兜底):只保留 automatic 一个模式键。OVH 对键集合的校验持续收紧,
+	// 让最终错误冒泡给 Explain 的双语提示。
+	minimal := make(map[string]interface{}, 3)
+	for _, k := range []string{"forced", "automatic", "period"} {
+		if v, ok := next[k]; ok {
+			minimal[k] = v
+		}
+	}
+	return client.Put(path, map[string]interface{}{"renew": minimal}, nil)
 }
 
 // respondOVHError 统一的 OVH 写操作错误响应:
