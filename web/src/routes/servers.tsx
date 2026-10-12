@@ -6,7 +6,6 @@ import {
   Filter, MapPin, Globe } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useSkin } from "@/lib/skin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +80,6 @@ function PriceFallback({ loading, subsidiary }: { loading: boolean; subsidiary: 
 
 function ServersPage() {
   const { t } = useTranslation();
-  const skin = useSkin();
   const q = useServers();
   // 单次拉取 OVH 公开可用性接口（一条请求拿到所有 planCode × 所有 DC 的状态）
   const availQ = useAvailability();
@@ -185,7 +183,6 @@ function ServersPage() {
 
       {/* 工具条。手机端:搜索框独占一行(要能看清输入),下面一行放「仅显示可用」+
           结算币种 + 计数 —— 以前这四样各占一整行,在 390px 宽里白吃 ~240px。 */}
-      {skin === "pearl" ? (
         <div className="search-form m-surface flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
           <div className="relative w-full sm:flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -224,44 +221,6 @@ function ServersPage() {
           </span>
           </div>
         </div>
-      ) : (
-        <Card>
-          <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-            <div className="relative w-full sm:flex-1 min-w-0">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder={t("servers.searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-full"
-              />
-            </div>
-            <div className="flex items-center gap-2 flex-wrap sm:contents">
-          <Button
-            variant={onlyAvailable ? "default" : "outline"}
-            size="sm"
-            className="rounded-full flex-shrink-0"
-            onClick={() => setOnlyAvailable((v) => !v)}
-          >
-            <Filter className="w-3.5 h-3.5" />
-            {t("servers.onlyAvailable")}
-          </Button>
-          <span className="inline-flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 rounded-full border border-border text-[11px] sm:text-[12px] text-muted-foreground flex-shrink-0">
-            <Globe className="w-3.5 h-3.5" />
-            <Trans
-              i18nKey="servers.priceRegion"
-              values={{ subsidiary }}
-              components={{ b: <b className="text-foreground font-semibold" /> }}
-              t={t}
-            />
-          </span>
-          <span className="text-[11px] sm:text-[12px] text-muted-foreground whitespace-nowrap">
-            {q.isPending ? t("servers.loadingShort") : t("servers.totalCount", { n: filtered.length })}
-          </span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* 后端 /me 响应上的 X-Subsidiary-Mismatch:账户里配的 zone 跟 OVH 认的 ovhSubsidiary 不一致。
           这一页的机型集合、价格、库存全部由子公司决定,配错了看到的整页都是别的区的东西,

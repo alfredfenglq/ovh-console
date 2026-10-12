@@ -286,6 +286,8 @@ export const snipePagesEn = {
     },
     activeQueueTitle: "Active queue",
     viewAll: "View all",
+    denseView: "Compact view",
+    comfyView: "Comfortable view",
       subtitle: "System status, sniping activity and host resources.",
       greetNight: "Working late",
       greetMorning: "Good morning",

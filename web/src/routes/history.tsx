@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { fmtDateTime } from "@/i18n/format";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useSkin } from "@/lib/skin";
 import { PearlSearchForm } from "@/components/pearl/ListKit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -119,7 +118,6 @@ function getExpirationMs(item: PurchaseHistory): number {
 
 function HistoryPage() {
   const { t } = useTranslation();
-  const skin = useSkin();
   const list = useHistory();
   const clear = useClearHistory();
   const refreshStatus = useRefreshOrderStatus();
@@ -171,7 +169,6 @@ function HistoryPage() {
         }
       />
 
-      {skin === "pearl" ? (
         <PearlSearchForm>
           <div className="relative field" style={{ flex: "1 1 240px" }}>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -193,35 +190,6 @@ function HistoryPage() {
             </SelectContent>
           </Select>
         </PearlSearchForm>
-      ) : (
-        <Card>
-          <CardContent className="p-3 sm:p-5">
-          {/* 手机端两个控件并排:搜索框和状态下拉各占一整行时白吃 ~70px,
-              而「所有状态」这种下拉本来就不需要整行宽 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder={t("history.searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-full"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue placeholder={t("history.allStatuses")} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("history.allStatuses")}</SelectItem>
-                <SelectItem value="success">{t("history.success")}</SelectItem>
-                <SelectItem value="failed">{t("history.failed")}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-      )}
 
       {list.isPending ? (
         <Card>
@@ -251,14 +219,12 @@ function HistoryPage() {
       ) : (
         <>
           {/* 桌面 / 平板:横向表格 */}
-          <Card className={`hidden md:block overflow-x-auto${skin === "pearl" ? " table-wrap" : ""}`}>
-            {skin === "pearl" && (
-              <div className="panel-head">
-                <span className="eyebrow">{t("history.title")}</span>
-                <span className="panel-meta">{items.length} / {filtered.length}</span>
-              </div>
-            )}
-            <table className={skin === "pearl" ? "table" : "w-full min-w-[760px]"}>
+          <Card className="hidden md:block overflow-x-auto table-wrap">
+            <div className="panel-head">
+              <span className="eyebrow">{t("history.title")}</span>
+              <span className="panel-meta">{items.length} / {filtered.length}</span>
+            </div>
+            <table className="table">
               <thead>
                 <tr className="text-left text-[11px] font-medium text-muted-foreground border-b border-border">
                   <th className="px-4 py-3">{t("history.col.model")}</th>

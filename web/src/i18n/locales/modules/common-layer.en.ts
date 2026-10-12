@@ -401,9 +401,9 @@ const pack: CommonLayerPack = {
     },
   },
   shell: {
-    skinToPearl: "Switch to pearl skin",
-    skinToClassic: "Switch to classic skin",
     closeMenu: "Close menu",
+    prevPage: "Previous",
+    nextPage: "Next",
     openMenu: "Open menu",
     expandRail: "Expand navigation",
     collapseRail: "Collapse navigation",

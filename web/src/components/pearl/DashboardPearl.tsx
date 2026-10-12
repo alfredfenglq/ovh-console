@@ -6,6 +6,7 @@ import { useStats } from "@/hooks/use-stats";
 import { useQueueList } from "@/hooks/use-queue";
 import { useSystemMetrics, useAppVersion } from "@/hooks/use-system-metrics";
 import { UpdateButton } from "@/components/common/UpdateButton";
+import { TickRing } from "@/components/pearl/TickRing";
 
 /**
  * 珍珠皮肤的工作台(scaffold-master 版式):
@@ -186,53 +187,22 @@ export function DashboardPearl() {
               {sys.data ? `${sys.data.host.hostname} · ${sys.data.host.platform}` : "…"}
             </span>
           </div>
-          <div className="trend-foot">
-            <div className="readout">
-              <span className="readout-label">
-                <Cpu size={12} style={{ display: "inline", verticalAlign: "-2px" }} /> {t("dashboard.cpu")}
-                {sys.data ? ` · ${t("dashboard.cores", { n: sys.data.cpu.cores })}` : ""}
-              </span>
-              <span className="readout-value tnum">
-                {sys.data ? sys.data.cpu.percent.toFixed(0) : "—"}
-                <small>%</small>
-              </span>
-            </div>
-            <div className="readout">
-              <span className="readout-label">
-                <MemoryStick size={12} style={{ display: "inline", verticalAlign: "-2px" }} /> {t("dashboard.memory")}
-              </span>
-              <span className="readout-value tnum">
-                {sys.data ? sys.data.memory.percent.toFixed(0) : "—"}
-                <small>%</small>
-              </span>
-              {sys.data && (
-                <span className="readout-sub">
-                  {t("dashboard.usedFree", {
-                    used: fmtBytes(sys.data.memory.usedBytes),
-                    free: fmtBytes(sys.data.memory.totalBytes - sys.data.memory.usedBytes),
-                  })}
-                </span>
-              )}
-            </div>
-            <div className="readout">
-              <span className="readout-label">
-                <HardDrive size={12} style={{ display: "inline", verticalAlign: "-2px" }} /> {t("dashboard.disk")}
-                {sys.data ? ` · ${sys.data.disk.path}` : ""}
-              </span>
-              <span className="readout-value tnum">
-                {sys.data ? sys.data.disk.percent.toFixed(0) : "—"}
-                <small>%</small>
-              </span>
-              {sys.data && (
-                <span className="readout-sub">
-                  {t("dashboard.usedFree", {
-                    used: fmtBytes(sys.data.disk.usedBytes),
-                    free: fmtBytes(sys.data.disk.totalBytes - sys.data.disk.usedBytes),
-                  })}
-                </span>
-              )}
-            </div>
+          <div className="ring-wrap">
+            <TickRing value={sys.data?.cpu.percent} label="CPU" />
+            <TickRing value={sys.data?.memory.percent} label="MEM" />
+            <TickRing value={sys.data?.disk.percent} label="DISK" />
           </div>
+          {(sys.data?.memory || sys.data?.disk) && (
+            <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 10 }}>
+              <span className="readout-sub">
+                {t("dashboard.memory")} {t("dashboard.usedFree", { used: fmtBytes(sys.data.memory.usedBytes), free: fmtBytes(sys.data.memory.totalBytes - sys.data.memory.usedBytes) })}
+              </span>
+              <span className="readout-sub">
+                {t("dashboard.disk")} {t("dashboard.usedFree", { used: fmtBytes(sys.data.disk.usedBytes), free: fmtBytes(sys.data.disk.totalBytes - sys.data.disk.usedBytes) })} · {sys.data.disk.path}
+              </span>
+              {sys.data ? <span className="readout-sub">{t("dashboard.cores", { n: sys.data.cpu.cores })}</span> : null}
+            </div>
+          )}
         </section>
 
         {/* 窄块:最近队列 */}

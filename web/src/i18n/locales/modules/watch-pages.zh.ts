@@ -11,6 +11,8 @@
  */
 export const watchPagesZh = {
   monitor: {
+    swimTitle: "今日机房时间线",
+    heatTitle: "库存变化热力 7×24",
     title: "服务器监控",
     description: "自动监控服务器可用性变化并推送通知",
     addAction: "添加订阅",

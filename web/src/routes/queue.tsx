@@ -14,7 +14,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useTranslation, Trans } from "react-i18next";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useSkin } from "@/lib/skin";
 import { PearlPanel, PearlPanelHead } from "@/components/pearl/ListKit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -146,7 +145,8 @@ function IntervalEditor({ id, value }: { id: string; value: number }) {
 
 function QueuePage() {
   const { t } = useTranslation();
-  const skin = useSkin();
+  // 行卡密度:紧凑/舒适,按页记忆(他的 view.ts 思路)
+  const [dense, setDense] = useState(() => localStorage.getItem("ovh_queue_density") === "1");
   const queue = useQueueList();
   // 每条链路上一轮的耗时,用来回答"我到底卡在哪一步"
   const timings = usePurchaseTimings();
@@ -370,16 +370,12 @@ function QueuePage() {
         />
       )}
 
-      {skin === "pearl" ? (
         <PearlPanel>
           <PearlPanelHead eyebrow={t("queue.title")} meta={`${items.length}`} />
           <div className="panel-body" style={{ paddingTop: 14 }}>
-            <div className="space-y-3">{queueBody}</div>
+            <div className={dense ? "space-y-1.5 queue-dense" : "space-y-3"}>{queueBody}</div>
           </div>
         </PearlPanel>
-      ) : (
-        queueBody
-      )}
 
       <Dialog open={showBatchDelete} onOpenChange={setShowBatchDelete}>
         <DialogContent>

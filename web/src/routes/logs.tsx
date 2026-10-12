@@ -5,8 +5,9 @@ import { fmtPattern } from "@/i18n/format";
 import { FileText, RefreshCw, Trash2, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useSkin } from "@/lib/skin";
 import { PearlSearchForm, PearlPanel, PearlPanelHead } from "@/components/pearl/ListKit";
+import { BarChart } from "@/components/pearl/BarChart";
+import { Pager, usePaged } from "@/components/pearl/Pager";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,7 +46,6 @@ function maskLogLine(text: string, hidden: boolean): string {
 
 function LogsPage() {
   const { t } = useTranslation();
-  const skin = useSkin();
   const { hidden } = useHideIp();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const logs = useLogs(autoRefresh);
@@ -64,10 +64,20 @@ function LogsPage() {
     });
   }, [items, search, levelFilter]);
 
+  // 分页:日志流式追加,total 变化时 usePaged 自动夹回末页
+  const PAGE_SIZE = 60;
+  const { page, setPage } = usePaged(filtered.length, PAGE_SIZE);
+  const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const levelCounts = ["INFO", "WARNING", "ERROR", "DEBUG"].map((lv) => {
+    const n = items.filter((l) => l.level === lv).length;
+    return { label: lv.slice(0, 4), value: n, failed: lv === "ERROR" ? n : 0, highlight: lv === "ERROR" };
+  });
+
   // 自动滚到底部：仅当 autoRefresh 开启且没有筛选条件（避免破坏用户的浏览位置）
   const logEndRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (autoRefresh && !search && levelFilter === "all") {
+    const lastPage = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (autoRefresh && !search && levelFilter === "all" && page >= lastPage) {
       logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [filtered, autoRefresh, search, levelFilter]);
@@ -110,7 +120,7 @@ function LogsPage() {
           />
         ) : (
           <div className="max-h-[calc(100vh-340px)] overflow-y-auto divide-y divide-border">
-            {filtered.map((log) => <LogRow key={log.id} log={log} />)}
+            {pageItems.map((log) => <LogRow key={log.id} log={log} />)}
             <div ref={logEndRef} />
           </div>
         )}
@@ -137,7 +147,6 @@ function LogsPage() {
         }
       />
 
-      {skin === "pearl" ? (
         <PearlSearchForm>
           <div className="relative field is-wide" style={{ flex: "1 1 240px", maxWidth: 480 }}>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
@@ -169,54 +178,37 @@ function LogsPage() {
             </label>
           </div>
         </PearlSearchForm>
-      ) : (
-        <Card>
-          <CardContent className="p-3 sm:p-5">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
-              <div className="relative col-span-2 sm:col-span-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-                <Input
-                  placeholder={t("logs.searchPlaceholder")}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 rounded-full"
-                />
-              </div>
-              <Select value={levelFilter} onValueChange={setLevelFilter}>
-                <SelectTrigger className="rounded-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
-                  <SelectItem value="INFO">INFO</SelectItem>
-                  <SelectItem value="WARNING">WARNING</SelectItem>
-                  <SelectItem value="ERROR">ERROR</SelectItem>
-                  <SelectItem value="DEBUG">DEBUG</SelectItem>
-                </SelectContent>
-              </Select>
-              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-                <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
-                <span>{t("logs.autoRefresh")}</span>
-              </label>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {skin === "pearl" ? (
-        <PearlPanel>
+        {/* 横带分层:概览读数条 + 级别分布 */}
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "stretch" }}>
+        <div className="app-card" style={{ flex: "1 1 260px", padding: "14px 18px", display: "flex", gap: 22, alignItems: "center" }}>
+          <div className="metric metric-s">
+            <span className="metric-label">{t("logs.bandTotal")}</span>
+            <span className="metric-figure tnum" style={{ fontSize: 26 }}>{items.length}</span>
+          </div>
+          <div className="metric metric-s">
+            <span className="metric-label">{t("logs.bandErrors")}</span>
+            <span className="metric-figure tnum" style={{ fontSize: 26, color: "var(--red-text)" }}>
+              {items.filter((l) => l.level === "ERROR").length}
+            </span>
+          </div>
+          <div className="metric metric-s">
+            <span className="metric-label">{t("logs.bandWarnings")}</span>
+            <span className="metric-figure tnum" style={{ fontSize: 26, color: "var(--warning, #ac4705)" }}>
+              {items.filter((l) => l.level === "WARNING").length}
+            </span>
+          </div>
+        </div>
+        <div className="app-card" style={{ flex: "1.4 1 320px", padding: "12px 18px" }}>
+          <BarChart items={levelCounts} height={72} />
+        </div>
+      </div>
+
+      <PearlPanel>
           <PearlPanelHead eyebrow={t("logs.systemLogs")} meta={t("logs.count", { count: filtered.length })} />
           <div className="panel-body">{panelBody}</div>
+          <Pager page={page} pageSize={PAGE_SIZE} total={filtered.length} onChange={setPage} />
         </PearlPanel>
-      ) : (
-        <Card>
-          <div className="px-4 py-2.5 border-b border-border flex items-center justify-between text-[12px]">
-            <span className="font-semibold">{t("logs.systemLogs")}</span>
-            <span className="text-muted-foreground">{t("logs.count", { count: filtered.length })}</span>
-          </div>
-          {panelBody}
-        </Card>
-      )}
 
       <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
         <DialogContent>

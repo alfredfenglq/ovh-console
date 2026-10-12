@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
+import { HeatGrid } from "@/components/pearl/HeatGrid";
+import { Swimlane, type SwimLane } from "@/components/pearl/Swimlane";
+import { useStockEvents } from "@/hooks/use-stock-history";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +65,7 @@ export const Route = createFileRoute("/monitor")({
 function MonitorPage() {
   const { t } = useTranslation();
   const list = useMonitorList();
+  const events = useStockEvents(list.data, "server");
   const status = useMonitorStatus();
   const remove = useRemoveMonitorSubscription();
   const clear = useClearMonitor();
@@ -112,6 +116,36 @@ function MonitorPage() {
           </div>
         }
       />
+
+      {/* 热力格 + 当天泳道:库存变化的时段分布与时间线 */}
+      {list.data && (list.data || []).length > 0 && (
+        <div className="bento-grid">
+          <section className="app-card panel" style={{ gridColumn: "span 7" }}>
+            <div className="panel-head"><span className="eyebrow">{t("monitor.heatTitle")}</span></div>
+            <div className="panel-body"><HeatGrid cells={(events.data || []).map((e) => ({ ts: e.ts }))} loading={events.isPending} /></div>
+          </section>
+          <section className="app-card panel" style={{ gridColumn: "span 5" }}>
+            <div className="panel-head"><span className="eyebrow">{t("monitor.swimTitle")}</span></div>
+            <div className="panel-body">
+              <Swimlane lanes={
+                (() => {
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  const byDc = new Map<string, import("@/components/pearl/Swimlane").SwimBlock[]>();
+                  for (const e of events.data || []) {
+                    const ts = new Date(e.ts).getTime();
+                    if (ts < today.getTime()) continue;
+                    const arr = byDc.get(e.datacenter) || [];
+                    arr.push({ at: e.ts, failed: e.changeType === "unavailable", label: `${e.planCode} ${e.status}` });
+                    byDc.set(e.datacenter, arr);
+                  }
+                  return Array.from(byDc, ([name, blocks]) => ({ name, blocks })).slice(0, 8);
+                })()
+              } />
+            </div>
+          </section>
+        </div>
+      )}
+
 
       {/* 状态卡 */}
       <Card>

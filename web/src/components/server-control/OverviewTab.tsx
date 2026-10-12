@@ -7,7 +7,6 @@ import { PartialNotice, DetailErrorTag } from "@/components/common/PartialNotice
 import { MrtgTrafficChart } from "./MrtgTrafficChart";
 import { LotteryConfetti } from "./LotteryConfetti";
 import { LotteryReportPearl } from "@/components/pearl/LotteryReportPearl";
-import { useSkin } from "@/lib/skin";
 import { useTranslation } from "react-i18next";
 
 /** 概览 Tab：硬件 + 网络（IP / 接口 / MRTG 流量）。服务信息胶囊条已上提到 ServerTabs 同行 */
@@ -18,7 +17,6 @@ export function OverviewTab({ server }: { server: OwnedServer }) {
   const ips = useServerIps(server.serviceName);
   const interfaces = useServerNetworkInterfaces(server.serviceName);
   const { hidden } = useHideIp();
-  const skin = useSkin();
 
   // 内存字段是 { value, unit } 对象
   const memText = hw.data?.memorySize
@@ -66,47 +64,13 @@ export function OverviewTab({ server }: { server: OwnedServer }) {
 
       
         {/* 中奖横幅:订购配置 != 实际交付且更好。checked=false 时不显示。
-            等级(1中奖/2大奖/3头奖)由后端按中奖项数+翻倍幅度算好;首次查看撒一次彩带。 */}
-        {lottery.data?.checked && lottery.data.won && (skin === "pearl" ? (
+            等级由后端按中奖项数算好;首次查看撒一次彩带。 */}
+        {lottery.data?.checked && lottery.data.won && (
           <div className="relative">
             <LotteryConfetti sessionKey={server.serviceName} />
             <LotteryReportPearl lottery={lottery.data} />
           </div>
-        ) : (
-          <div className="relative border border-amber-400/40 bg-amber-400/5 rounded-2xl p-3 flex items-start gap-2">
-            <LotteryConfetti sessionKey={server.serviceName} />
-            <PartyPopper className={`w-4 h-4 mt-0.5 flex-shrink-0 ${lottery.data.tier === 3 ? "text-amber-500 w-5 h-5" : "text-amber-500"}`} />
-            <div className="leading-relaxed min-w-0">
-              <span className="text-[12px] font-semibold text-amber-600 dark:text-amber-300">
-                {t(`maint.overview.lottery.title${Math.min(lottery.data.tier || 1, 3)}`)}
-              </span>{" "}
-              <span className="text-[12px] text-muted-foreground">
-                {t("maint.overview.lottery.bannerDesc", {
-                  items: lottery.data.items
-                    .map((i) => {
-                      const label = t(`maint.overview.lottery.kind.${i.kind}`);
-                      if (i.gainPct && i.gainPct >= 1) {
-                        return `${label} ${t("maint.overview.lottery.gainPct", { pct: Math.round(i.gainPct) })}`;
-                      }
-                      if (i.mediaUp) {
-                        return `${label} ${t("maint.overview.lottery.gainMedia")}`;
-                      }
-                      return label;
-                    })
-                    .join(" · "),
-                })}
-              </span>
-              <div className="mt-1.5 space-y-0.5">
-                {lottery.data.items.map((i) => (
-                  <p key={i.kind} className="text-[11px] text-muted-foreground">
-                    <span className="font-medium text-foreground/80">{t(`maint.overview.lottery.kind.${i.kind}`)}</span>
-                    ：{i.ordered} → <span className="font-semibold text-amber-600 dark:text-amber-300">{i.actual}</span>
-                  </p>
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
+        )}
 
 <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         <InfoCard icon={<Cpu className="w-4 h-4" />} label={t("maint.overview.info.cpu")} value={cpuText} loading={hw.isPending} />
@@ -194,25 +158,7 @@ function InfoCard({
   value: string;
   loading?: boolean;
 }) {
-  // 珍珠皮肤:仪器读数块(groove 凹槽底 + 大号读数 + 上标单位由值文案自带)
-  const skin = useSkin();
-  if (skin === "pearl") {
-    return (
-      <div className="readout" style={{ minWidth: 0 }}>
-        <span className="readout-label">
-          {icon}
-          <span style={{ marginLeft: 6 }}>{label}</span>
-        </span>
-        {loading ? (
-          <Skeleton className="h-5 w-24 mt-1.5" />
-        ) : (
-          <span className="readout-value" style={{ fontSize: 15, lineHeight: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={value}>
-            {value || "—"}
-          </span>
-        )}
-      </div>
-    );
-  }
+  // 仪器读数块(groove 凹槽底 + 大号读数)
   return (
     <div className="border border-border rounded-xl px-3.5 py-3 flex items-center gap-3 min-w-0">
       <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">{icon}</div>

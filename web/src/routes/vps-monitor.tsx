@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
+import { HeatGrid } from "@/components/pearl/HeatGrid";
+import { useStockEvents } from "@/hooks/use-stock-history";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,6 +94,8 @@ function modelLabel(code: string, models?: VPSModel[]): string {
 
 function VPSMonitorPage() {
   const { t } = useTranslation();
+  const vpsList = useVPSMonitorList();
+  const vpsEvents = useStockEvents(vpsList.data, "vps");
   const list = useVPSMonitorList();
   const status = useVPSMonitorStatus();
   const toggle = useToggleVPSMonitor();
@@ -173,6 +177,14 @@ function VPSMonitorPage() {
           </div>
         }
       />
+
+      {vpsList.data && (vpsList.data || []).length > 0 && (
+        <section className="app-card panel">
+          <div className="panel-head"><span className="eyebrow">{t("vpsMonitor.heatTitle")}</span></div>
+          <div className="panel-body"><HeatGrid cells={(vpsEvents.data || []).map((e) => ({ ts: e.ts }))} loading={vpsEvents.isPending} /></div>
+        </section>
+      )}
+
 
       <Card>
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

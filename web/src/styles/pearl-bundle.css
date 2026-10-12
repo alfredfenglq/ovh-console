@@ -222,3 +222,14 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
   width: 36px;
   height: 36px;
 }
+
+/* 监控页热力/泳道双面板:窄屏占满 */
+@media (max-width: 1180px) {
+  [data-skin="pearl"] .bento-grid > .panel[style*="span 7"],
+  [data-skin="pearl"] .bento-grid > .panel[style*="span 5"] { grid-column: 1 / -1 !important; }
+}
+
+/* 队列行卡紧凑密度:内距与分段收窄 */
+.queue-dense .app-card { border-radius: var(--r-md); }
+.queue-dense .app-card > * { --row-scale: 0.85; }
+.queue-dense .app-card { padding: 0.6; }

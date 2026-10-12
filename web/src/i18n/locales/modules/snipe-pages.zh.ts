@@ -286,6 +286,8 @@ export const snipePagesZh = {
     },
     activeQueueTitle: "活跃队列",
     viewAll: "查看全部",
+    denseView: "紧凑视图",
+    comfyView: "舒适视图",
       subtitle: "系统运行概况、抢购状态与宿主机资源。",
       greetNight: "夜深了",
       greetMorning: "早上好",

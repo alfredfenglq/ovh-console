@@ -14,6 +14,8 @@ import type { WatchPagesPack } from "./watch-pages.zh";
 
 const pack: WatchPagesPack = {
   monitor: {
+    swimTitle: "Today by datacenter",
+    heatTitle: "Stock-change heat 7×24",
     title: "Server Monitor",
     description: "Watch server availability changes automatically and push notifications",
     addAction: "Add subscription",
