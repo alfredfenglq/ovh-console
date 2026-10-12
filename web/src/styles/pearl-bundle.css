@@ -1,8 +1,6 @@
 /* ============================================================
-   珍珠玻璃皮肤捆绑包(来自 scaffold-master 设计体系)
-   只在 html[data-skin="pearl"] 时通过运行时 <link> 挂载 ——
-   经典皮肤下完全不加载,零影响。层序见 DESIGN.md:
-   tokens → base → materials → components → instruments → layout
+   珍珠玻璃皮肤捆绑包(来自 scaffold-master 设计体系,全站唯一皮肤)
+   静态引入;html 永远带 data-skin="pearl"(见 lib/skin.ts),作用域选择器照常生效
    ============================================================ */
 @import "./pearl/tokens.css";
 @import "./pearl/base.css";

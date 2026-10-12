@@ -8,6 +8,8 @@ import { ThemedToaster } from "@/components/common/ThemedToaster";
 import "@/i18n";
 import "@/lib/skin";
 import "@/styles/globals.css";
+// 珍珠玻璃设计体系(来自 scaffold-master):层序 = tokens → base → materials → components → instruments → layout → pages + 桥接/定制
+import "@/styles/pearl-bundle.css";
 
 /**
  * 应用入口：

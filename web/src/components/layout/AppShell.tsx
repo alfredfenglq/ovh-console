@@ -3,11 +3,10 @@ import { Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { PanelLeftClose, PanelLeftOpen, Menu, Shield, Github } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { NAV_GROUPS } from "@/components/layout/Sidebar";
+import { NAV_GROUPS } from "@/components/layout/nav";
 import { AccountSwitcher } from "@/components/layout/AccountSwitcher";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
-import { SkinToggle } from "@/components/layout/SkinToggle";
 import { useAppVersion } from "@/hooks/use-system-metrics";
 
 /**
@@ -246,7 +245,6 @@ export function AppShell() {
             </nav>
             <span className="spacer" />
             <LanguageToggle />
-            <SkinToggle />
             <ThemeToggle />
           </header>
 
