@@ -151,3 +151,14 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
   color: var(--ink);
   font-weight: 620;
 }
+
+/* ── 用户指定:去掉设备框的黑色粗边与圆角,画布铺满视口 ──
+   (舞台留白/深色外框/38px 圆角是 scaffold-master 的"仪器外壳"语汇,
+   用户不要 —— 换成常规全幅布局,导航轨/材质/配色不变) */
+[data-skin="pearl"] .stage { padding: 0; }
+[data-skin="pearl"] .app-frame {
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
