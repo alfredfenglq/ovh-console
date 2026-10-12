@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { fmtDateTime } from "@/i18n/format";
 import { useStats } from "@/hooks/use-stats";
 import { useQueueList } from "@/hooks/use-queue";
-import { useSystemMetrics, useAppVersion } from "@/hooks/use-system-metrics";
+import { useSystemMetrics, useAppVersion, useUpdateCheck } from "@/hooks/use-system-metrics";
 import { UpdateButton } from "@/components/common/UpdateButton";
 import { TickRing } from "@/components/pearl/TickRing";
 
@@ -68,6 +68,9 @@ export function DashboardPearl() {
   const queue = useQueueList();
   const sys = useSystemMetrics();
   const version = useAppVersion();
+  // UpdateButton 在 check 为空时直接 return null —— 必须把检查结果传进去,
+  // 否则按钮永远不渲染(经典版当年就为这个留过注释,移植时漏了)
+  const update = useUpdateCheck();
 
   const s = stats.data;
   const unknown = stats.isError || stats.isPending;
@@ -82,7 +85,7 @@ export function DashboardPearl() {
           <p className="page-desc">{t("dashboard.subtitle")}</p>
         </div>
         <div className="page-actions">
-          <UpdateButton />
+          <UpdateButton check={update.data} />
         </div>
       </header>
 

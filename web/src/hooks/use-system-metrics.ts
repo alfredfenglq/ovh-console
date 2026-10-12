@@ -45,10 +45,10 @@ export function useUpdateCheck() {
   return useQuery<UpdateCheck>({
     queryKey: ["app", "update-check"],
     queryFn: async () => (await api.get<UpdateCheck>("/version/check-update")).data,
-    staleTime: 60 * 60 * 1000, // 1h
+    staleTime: 15 * 60 * 1000, // 15min:发新版后最多一刻钟就会出现更新按钮
     gcTime: 24 * 60 * 60 * 1000,
-    retry: 0,
-    refetchOnWindowFocus: false,
+    retry: 1,
+    refetchOnWindowFocus: true,
   });
 }
 
