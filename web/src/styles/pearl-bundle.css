@@ -212,3 +212,15 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── 审计修复 ── */
+/* 宽屏限读:1920 下 .page 全幅 1688px 行太长,限 1600 居中(仪表盘 bento 仍占满 1600) */
+[data-skin="pearl"] .page {
+  max-width: 1600px;
+  margin-inline: auto;
+}
+/* 触摸目标:icon-btn 32→36px(顶栏 64px 内仍协调) */
+[data-skin="pearl"] .icon-btn {
+  width: 36px;
+  height: 36px;
+}
