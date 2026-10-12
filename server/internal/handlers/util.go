@@ -269,41 +269,47 @@ func idToString(v interface{}) string {
 
 // putServiceRenew 发 renew 修改(独服 / VPS 的 PUT .../serviceInfos 共用)。
 //
-// OVH 正在分批下线 renew.manualPayment 参数(实测 2026-10 US 区 VPS 拒收:
-// 400 "manualPayment parameter isn't available anymore"),但官方 schema 三区
-// 都还保留着这个字段 —— 文档滞后于 live,没法按 schema 预判哪个服务收。
-// 所以按"先按现行契约发,命中参数废弃就自动去掉该字段重试"处理:
-// 手动续费在新契约里就是 automatic=false + deleteAtExpiration=false,
-// manualPayment 在新计费体系里已无语义,去掉不算改行为。
+// OVH 对 renew 载荷的校验在持续收紧,且文档(schema)一直滞后 —— 实测三族拒绝:
+// 参数废弃(manualPayment 不可发)、模式键同现即拒(固定名单模板)、
+// schema 必填(deleteAtExpiration 必须在场)。经验契约(US 独服实测 2026-10-12):
+//   {automatic:true, deleteAtExpiration:false}  → auto 可用
+//   {automatic:false, deleteAtExpiration:false} → 被判冲突(全 false 无模式)
+//   {automatic 缺席, deleteAtExpiration:false}  → 未被拒 —— 疑似新契约的手动表达
+// 所以按组合逐级降级,任何"400+renew 字段族"的拒绝都换下一级组合:
+//   0 原始载荷(含 manualPayment,老区契约)
+//   1 去 manualPayment(EU/CA 的新契约)
+//   2 再去 automatic(US 的手动表达:automatic 缺席)
+// 非 400(权限/不存在/状态)直接冒泡,不浪费重试。
 func putServiceRenew(client *ovhsdk.Client, path string, next map[string]interface{}) error {
-	err := client.Put(path, map[string]interface{}{"renew": next}, nil)
-	if err == nil || !ovh.IsRenewConflict(err) {
-		return err
+	attempts := []map[string]interface{}{next}
+	if _, has := next["manualPayment"]; has {
+		a1 := make(map[string]interface{}, len(next))
+		for k, v := range next {
+			if k != "manualPayment" {
+				a1[k] = v
+			}
+		}
+		attempts = append(attempts, a1)
+		a2 := make(map[string]interface{}, len(a1))
+		for k, v := range a1 {
+			if k != "automatic" {
+				a2[k] = v
+			}
+		}
+		attempts = append(attempts, a2)
 	}
-	// 降级一:去掉 manualPayment。新契约里手动续费就是 automatic=false +
-	// deleteAtExpiration=false;且 OVH 的 "Conflicting arguments" 是三键同现即拒,
-	// 去掉后只剩两个键,不再触发该规则。
-	fallback := make(map[string]interface{}, len(next))
-	for k, v := range next {
-		if k != "manualPayment" {
-			fallback[k] = v
+	var lastErr error
+	for _, a := range attempts {
+		err := client.Put(path, map[string]interface{}{"renew": a}, nil)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+		if !ovh.IsRenewPayloadRejected(err) {
+			return err
 		}
 	}
-	if err = client.Put(path, map[string]interface{}{"renew": fallback}, nil); err == nil {
-		return nil
-	}
-	if !ovh.IsRenewConflict(err) {
-		return err
-	}
-	// 降级二(兜底):只保留 automatic 一个模式键。OVH 对键集合的校验持续收紧,
-	// 让最终错误冒泡给 Explain 的双语提示。
-	minimal := make(map[string]interface{}, 3)
-	for _, k := range []string{"forced", "automatic", "period"} {
-		if v, ok := next[k]; ok {
-			minimal[k] = v
-		}
-	}
-	return client.Put(path, map[string]interface{}{"renew": minimal}, nil)
+	return lastErr
 }
 
 // respondOVHError 统一的 OVH 写操作错误响应:

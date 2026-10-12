@@ -192,3 +192,28 @@ func TestIsRenewConflictConflictingArguments(t *testing.T) {
 		t.Fatalf("缺兜底提示: %s", got)
 	}
 }
+
+// 回归:第三族措辞 —— schema 必填("'deleteAtExpiration' is a required property",
+// 实测 US 独服 2026-10-12)。IsRenewPayloadRejected 必须认出三族全部;
+// 与 renew 无关的 400 不得误触组合降级。
+func TestIsRenewPayloadRejectedRequiredProperty(t *testing.T) {
+	cases := []struct {
+		msg  string
+		want bool
+	}{
+		{"'deleteAtExpiration' is a required property (at field: renew)", true},
+		{"Conflicting arguments: automatic, deleteAtExpiration and manualPayment", true},
+		{"[renew] manualPayment parameter isn't available anymore", true},
+		{"Some other bad request", false},
+	}
+	for _, c := range cases {
+		err := &ovhsdk.APIError{Code: 400, Message: c.msg}
+		if got := IsRenewPayloadRejected(err); got != c.want {
+			t.Errorf("%q → %v, 期望 %v", c.msg, got, c.want)
+		}
+	}
+	// 非 400 不触发
+	if IsRenewPayloadRejected(&ovhsdk.APIError{Code: 403, Message: "'deleteAtExpiration' is a required property"}) {
+		t.Error("403 不应触发降级")
+	}
+}
