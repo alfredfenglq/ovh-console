@@ -194,6 +194,25 @@ function InfoCard({
   value: string;
   loading?: boolean;
 }) {
+  // 珍珠皮肤:仪器读数块(groove 凹槽底 + 大号读数 + 上标单位由值文案自带)
+  const skin = useSkin();
+  if (skin === "pearl") {
+    return (
+      <div className="readout" style={{ minWidth: 0 }}>
+        <span className="readout-label">
+          {icon}
+          <span style={{ marginLeft: 6 }}>{label}</span>
+        </span>
+        {loading ? (
+          <Skeleton className="h-5 w-24 mt-1.5" />
+        ) : (
+          <span className="readout-value" style={{ fontSize: 15, lineHeight: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={value}>
+            {value || "—"}
+          </span>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="border border-border rounded-xl px-3.5 py-3 flex items-center gap-3 min-w-0">
       <div className="w-9 h-9 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0">{icon}</div>

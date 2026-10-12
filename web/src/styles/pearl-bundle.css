@@ -103,3 +103,22 @@ html.dark[data-skin="pearl"] {
 [data-skin="pearl"] .app-btn[data-variant="secondary"]:hover:not(:disabled) {
   box-shadow: var(--pill-inset), var(--edge), var(--e1);
 }
+
+/* ── 面板工具栏节奏:卡内头行(标题+操作,本代码库统一用 border-b 直接子元素) ──
+   珍珠下升级为仪器面板的读数条:等宽眉标感的小标题 + 底部细刻度线 */
+[data-skin="pearl"] .app-card > .border-b {
+  border-bottom: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 80%);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+}
+html.dark[data-skin="pearl"] .app-card > .border-b {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 80%);
+}
+[data-skin="pearl"] .app-card > .border-b > span:first-child,
+[data-skin="pearl"] .app-card > .border-b > h1:first-child,
+[data-skin="pearl"] .app-card > .border-b > h2:first-child,
+[data-skin="pearl"] .app-card > .border-b > h3:first-child,
+[data-skin="pearl"] .app-card > .border-b > div:first-child > span:first-child {
+  font-weight: 650;
+  letter-spacing: .02em;
+}
