@@ -340,6 +340,8 @@ const pack: MaintDialogsPack = {
       bannerDesc: "Delivered hardware is better than ordered: {{items}}",
       gainPct: "+{{pct}}%",
       gainMedia: "media upgrade",
+      plateOrdered: "ORDERED",
+      plateActual: "DELIVERED",
       kind: {
         cpu: "CPU",
         memory: "Memory",

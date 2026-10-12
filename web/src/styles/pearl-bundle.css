@@ -1,0 +1,77 @@
+/* ============================================================
+   珍珠玻璃皮肤捆绑包(来自 scaffold-master 设计体系)
+   只在 html[data-skin="pearl"] 时通过运行时 <link> 挂载 ——
+   经典皮肤下完全不加载,零影响。层序见 DESIGN.md:
+   tokens → base → materials → components → instruments → layout
+   ============================================================ */
+@import "./pearl/tokens.css";
+@import "./pearl/base.css";
+@import "./pearl/materials.css";
+@import "./pearl/components.css";
+@import "./pearl/instruments.css";
+@import "./pearl/layout.css";
+@import "./pearl/pages.css";
+
+/* ── 皮肤作用域的 token 桥:把旧 tailwind 语义名映射到珍珠色板 ──
+   经典皮肤的取值在 globals.css,不受这里影响;两套并存的关键。 */
+[data-skin="pearl"] {
+  --background: 160 12% 97%;          /* #f6f8f7 canvas */
+  --foreground: 210 20% 8%;           /* #101418 ink */
+  --card: 180 14% 98%;
+  --card-foreground: 210 20% 8%;
+  --popover: 180 14% 98%;
+  --popover-foreground: 210 20% 8%;
+  --primary: 217 84% 53%;             /* 蓝 = 选择与主操作 */
+  --primary-foreground: 0 0% 100%;
+  --accent: 180 8% 94%;
+  --accent-foreground: 210 20% 8%;
+  --secondary: 180 8% 94%;
+  --secondary-foreground: 210 20% 8%;
+  --muted: 180 8% 94%;
+  --muted-foreground: 194 8% 38%;
+  --border: 170 10% 90%;
+  --input: 170 10% 90%;
+  --ring: 217 84% 53%;
+  --destructive: 4 65% 46%;
+  --destructive-strong: 4 65% 46%;
+  --success: 95 66% 38%;              /* 青柠 #58a021 */
+  --warning: 32 92% 36%;
+  --info: 217 84% 53%;
+  --button-primary: 217 84% 53%;
+  --button-primary-foreground: 0 0% 100%;
+  --button-primary-hover: 217 82% 47%;
+  --button-primary-active: 217 82% 43%;
+  --button-primary-disabled: 170 10% 90%;
+  --button-primary-disabled-foreground: 194 8% 55%;
+}
+
+html.dark[data-skin="pearl"] {
+  --background: 200 12% 8%;           /* #121517 */
+  --foreground: 160 20% 94%;
+  --card: 190 10% 12%;
+  --card-foreground: 160 20% 94%;
+  --popover: 190 10% 12%;
+  --popover-foreground: 160 20% 94%;
+  --primary: 216 100% 65%;
+  --primary-foreground: 210 20% 8%;
+  --accent: 190 8% 16%;
+  --accent-foreground: 160 20% 94%;
+  --secondary: 190 8% 15%;
+  --secondary-foreground: 160 20% 94%;
+  --muted: 190 8% 15%;
+  --muted-foreground: 190 9% 72%;
+  --border: 190 6% 20%;
+  --input: 190 6% 20%;
+  --ring: 216 100% 65%;
+  --destructive: 3 100% 71%;
+  --destructive-strong: 3 84% 58%;
+  --success: 89 71% 62%;              /* #9be35a */
+  --warning: 40 90% 60%;
+  --info: 216 100% 65%;
+  --button-primary: 216 100% 65%;
+  --button-primary-foreground: 210 30% 10%;
+  --button-primary-hover: 216 96% 60%;
+  --button-primary-active: 216 92% 56%;
+  --button-primary-disabled: 190 8% 18%;
+  --button-primary-disabled-foreground: 190 8% 45%;
+}

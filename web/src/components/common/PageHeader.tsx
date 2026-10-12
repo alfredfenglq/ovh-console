@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { useSkin } from "@/lib/skin";
 
 interface PageHeaderProps {
   icon: LucideIcon;
@@ -10,14 +11,24 @@ interface PageHeaderProps {
 /**
  * 统一的页面顶部 header：左侧 icon 方块 + 标题 + 描述，右侧操作按钮。
  *
- * 手机端（< sm）刻意瘦一圈：
- * - 不画 icon 方块 —— 它在 390px 宽里吃掉 40px 却不带信息，标题本身就是标识
- * - 标题降到 17px，描述压成一行省略（描述多是「这页的数据是怎么来的」这类背景，
- *   要看的人会看，但不该在首屏占两行）
- * - 操作按钮跟标题挤同一行（以前它们各占一行，白吃 52px）
- * 这几条加起来在手机上省掉约 90px —— 原来光页头就占首屏的 1/10。
+ * 按皮肤出两套结构：
+ * - classic：原版(侧栏图标方块 + 28px 标题;手机端瘦一圈省首屏 —— 见原注释)
+ * - pearl：scaffold-master 的 page-head 节奏(28px 大标题 -.03em 字距 +
+ *   描述 + page-actions),页头即仪器面板的起始读数,不再画图标方块
  */
 export function PageHeader({ icon: Icon, title, description, action }: PageHeaderProps) {
+  const skin = useSkin();
+  if (skin === "pearl") {
+    return (
+      <header className="page-head">
+        <div className="page-head-main">
+          <h1 className="page-title">{title}</h1>
+          {description && <p className="page-desc">{description}</p>}
+        </div>
+        {action && <div className="page-actions">{action}</div>}
+      </header>
+    );
+  }
   return (
     <div className="flex items-start justify-between gap-2 sm:gap-4">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">

@@ -29,12 +29,19 @@ import { Skeleton } from "@/components/common/Skeleton";
 import { MetricRing } from "@/components/common/MetricRing";
 import { useIsNarrow } from "@/hooks/use-narrow";
 import { useStats } from "@/hooks/use-stats";
+import { useSkin } from "@/lib/skin";
+import { DashboardPearl } from "@/components/pearl/DashboardPearl";
 import { useQueueList, type QueueItem } from "@/hooks/use-queue";
 import { useSystemMetrics, useAppVersion, useUpdateCheck } from "@/hooks/use-system-metrics";
 
 /** 仪表盘:3 KPI + 活跃队列 / 系统状态 + 系统监控(CPU / 内存 / 磁盘 / 网络) */
 export const Route = createFileRoute("/")({
-  component: DashboardPage,
+  component: () => {
+    // 皮肤分流:经典皮肤 = 原 DashboardPage(未动);珍珠皮肤 = Bento 工作台。
+    // 两者共用同一批数据 hooks,缓存互通,切换皮肤不重新拉数据。
+    const skin = useSkin();
+    return skin === "pearl" ? <DashboardPearl /> : <DashboardPage />;
+  },
 });
 
 function DashboardPage() {

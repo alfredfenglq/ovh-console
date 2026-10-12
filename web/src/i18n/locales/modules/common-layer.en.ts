@@ -401,6 +401,12 @@ const pack: CommonLayerPack = {
     },
   },
   shell: {
+    skinToPearl: "Switch to pearl skin",
+    skinToClassic: "Switch to classic skin",
+    closeMenu: "Close menu",
+    openMenu: "Open menu",
+    expandRail: "Expand navigation",
+    collapseRail: "Collapse navigation",
     account: {
       loadFailed: "Failed to load the account list",
       add: "Add an OVH account",

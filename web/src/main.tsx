@@ -6,6 +6,7 @@ import { routeTree } from "./routeTree.gen";
 import { queryClient } from "@/lib/query";
 import { ThemedToaster } from "@/components/common/ThemedToaster";
 import "@/i18n";
+import "@/lib/skin";
 import "@/styles/globals.css";
 
 /**

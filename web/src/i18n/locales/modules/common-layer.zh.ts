@@ -384,6 +384,12 @@ export const commonLayerZh = {
     },
   },
   shell: {
+    skinToPearl: "切换到珍珠玻璃皮肤",
+    skinToClassic: "切换到经典皮肤",
+    closeMenu: "关闭菜单",
+    openMenu: "打开菜单",
+    expandRail: "展开导航",
+    collapseRail: "收起导航",
     account: {
       loadFailed: "账户列表读取失败",
       add: "添加 OVH 账户",

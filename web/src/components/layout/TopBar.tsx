@@ -4,6 +4,7 @@ import { MobileMenu } from "./MobileMenu";
 import { AccountSwitcher } from "@/components/layout/AccountSwitcher";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageToggle } from "@/components/layout/LanguageToggle";
+import { SkinToggle } from "@/components/layout/SkinToggle";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -52,6 +53,7 @@ export function TopBar() {
           桌面排在面包屑后。它们是全局控制,和"当前在哪一页"无关。 */}
       <div className="ml-auto flex-shrink-0 flex items-center">
         <LanguageToggle />
+        <SkinToggle />
         <ThemeToggle />
       </div>
       <div className="hidden sm:flex items-center gap-2.5 min-w-0">

@@ -335,6 +335,8 @@ export const maintDialogsZh = {
       bannerDesc: "实际交付优于订购：{{items}}",
       gainPct: "+{{pct}}%",
       gainMedia: "介质升级",
+      plateOrdered: "订购配置",
+      plateActual: "实际交付",
       kind: {
         cpu: "CPU",
         memory: "内存",
