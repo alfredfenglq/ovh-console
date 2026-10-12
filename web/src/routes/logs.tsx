@@ -5,6 +5,8 @@ import { fmtPattern } from "@/i18n/format";
 import { FileText, RefreshCw, Trash2, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
+import { useSkin } from "@/lib/skin";
+import { PearlSearchForm, PearlPanel, PearlPanelHead } from "@/components/pearl/ListKit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,7 @@ function maskLogLine(text: string, hidden: boolean): string {
 
 function LogsPage() {
   const { t } = useTranslation();
+  const skin = useSkin();
   const { hidden } = useHideIp();
   const [autoRefresh, setAutoRefresh] = useState(true);
   const logs = useLogs(autoRefresh);
@@ -69,68 +72,9 @@ function LogsPage() {
     }
   }, [filtered, autoRefresh, search, levelFilter]);
 
-  return (
-    <div className="space-y-3 sm:space-y-6">
-      <PageHeader
-        icon={FileText}
-        title={t("logs.title")}
-        description={t("logs.description")}
-        action={
-          <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" onClick={() => logs.refetch()} disabled={logs.isFetching}>
-              <RefreshCw className={`w-4 h-4 ${logs.isFetching ? "animate-spin" : ""}`} />
-              {t("common.refresh")}
-            </Button>
-            <Button variant="outline" onClick={() => setConfirmClear(true)} disabled={items.length === 0}>
-              <Trash2 className="w-4 h-4" />
-              {t("logs.clear")}
-            </Button>
-          </div>
-        }
-      />
-
-      <Card>
-        <CardContent className="p-3 sm:p-5">
-          {/* 手机端:搜索框整行,级别下拉和自动刷新并排 —— 三个控件各占一行
-              在 390px 宽里要 150px,而首屏总共才 844px */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
-            <div className="relative col-span-2 sm:col-span-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
-              <Input
-                placeholder={t("logs.searchPlaceholder")}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 rounded-full"
-              />
-            </div>
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="rounded-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
-                <SelectItem value="INFO">INFO</SelectItem>
-                <SelectItem value="WARNING">WARNING</SelectItem>
-                <SelectItem value="ERROR">ERROR</SelectItem>
-                <SelectItem value="DEBUG">DEBUG</SelectItem>
-              </SelectContent>
-            </Select>
-            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
-              <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
-              <span>{t("logs.autoRefresh")}</span>
-            </label>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <div className="px-4 py-2.5 border-b border-border flex items-center justify-between text-[12px]">
-          <span className="font-semibold">{t("logs.systemLogs")}</span>
-          <span className="text-muted-foreground">{t("logs.count", { count: filtered.length })}</span>
-        </div>
-        {/* 拉取失败但手里还有上一轮的日志:列表照常显示,顶上说清楚"这些是旧的"。
-            自动刷新开着的时候后端挂掉,页面表现是日志停止增长 —— 跟"系统很安静"
-            长得一模一样,不明说就等于骗人。 */}
+  // 面板体(加载/失败/空态/日志列表)—— 两套皮肤共用,只换外壳
+  const panelBody = (
+    <>
         {logs.isError && items.length > 0 && (
           <div className="p-3 pb-0">
             <LoadFailedBanner
@@ -170,7 +114,105 @@ function LogsPage() {
             <div ref={logEndRef} />
           </div>
         )}
-      </Card>
+    </>
+  );
+
+  return (
+    <div className="space-y-3 sm:space-y-6">
+      <PageHeader
+        icon={FileText}
+        title={t("logs.title")}
+        description={t("logs.description")}
+        action={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={() => logs.refetch()} disabled={logs.isFetching}>
+              <RefreshCw className={`w-4 h-4 ${logs.isFetching ? "animate-spin" : ""}`} />
+              {t("common.refresh")}
+            </Button>
+            <Button variant="outline" onClick={() => setConfirmClear(true)} disabled={items.length === 0}>
+              <Trash2 className="w-4 h-4" />
+              {t("logs.clear")}
+            </Button>
+          </div>
+        }
+      />
+
+      {skin === "pearl" ? (
+        <PearlSearchForm>
+          <div className="relative field" style={{ flex: "1 1 220px" }}>
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder={t("logs.searchPlaceholder")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={levelFilter} onValueChange={setLevelFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
+              <SelectItem value="INFO">INFO</SelectItem>
+              <SelectItem value="WARNING">WARNING</SelectItem>
+              <SelectItem value="ERROR">ERROR</SelectItem>
+              <SelectItem value="DEBUG">DEBUG</SelectItem>
+            </SelectContent>
+          </Select>
+          <label className="inline-flex items-center gap-2 text-sm cursor-pointer field" style={{ flex: "0 0 auto" }}>
+            <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
+            <span>{t("logs.autoRefresh")}</span>
+          </label>
+        </PearlSearchForm>
+      ) : (
+        <Card>
+          <CardContent className="p-3 sm:p-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 items-center">
+              <div className="relative col-span-2 sm:col-span-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder={t("logs.searchPlaceholder")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 rounded-full"
+                />
+              </div>
+              <Select value={levelFilter} onValueChange={setLevelFilter}>
+                <SelectTrigger className="rounded-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
+                  <SelectItem value="INFO">INFO</SelectItem>
+                  <SelectItem value="WARNING">WARNING</SelectItem>
+                  <SelectItem value="ERROR">ERROR</SelectItem>
+                  <SelectItem value="DEBUG">DEBUG</SelectItem>
+                </SelectContent>
+              </Select>
+              <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
+                <span>{t("logs.autoRefresh")}</span>
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {skin === "pearl" ? (
+        <PearlPanel>
+          <PearlPanelHead eyebrow={t("logs.systemLogs")} meta={t("logs.count", { count: filtered.length })} />
+          <div className="panel-body">{panelBody}</div>
+        </PearlPanel>
+      ) : (
+        <Card>
+          <div className="px-4 py-2.5 border-b border-border flex items-center justify-between text-[12px]">
+            <span className="font-semibold">{t("logs.systemLogs")}</span>
+            <span className="text-muted-foreground">{t("logs.count", { count: filtered.length })}</span>
+          </div>
+          {panelBody}
+        </Card>
+      )}
 
       <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
         <DialogContent>
