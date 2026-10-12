@@ -75,3 +75,31 @@ html.dark[data-skin="pearl"] {
   --button-primary-disabled: 190 8% 18%;
   --button-primary-disabled-foreground: 190 8% 45%;
 }
+
+/* ── 共享基类的珍珠材质升级(经典皮肤不受影响:规则只在本皮肤作用域) ──
+   Card → 珍珠阅读面(surface 渐变 + edge 内高光 + e1 接触阴影 + r-xl 圆角)
+   Button → 主按钮蓝 + e-accent 悬浮投影,次级/描边走玻璃 pill */
+[data-skin="pearl"] .app-card {
+  border-radius: var(--r-xl);
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--edge), var(--e1);
+}
+[data-skin="pearl"] .app-btn[data-variant="default"] {
+  border-radius: 999px;
+  box-shadow: var(--e-accent);
+  transition: box-shadow .25s var(--ease-premium), background .2s ease;
+}
+[data-skin="pearl"] .app-btn[data-variant="default"]:hover:not(:disabled) {
+  box-shadow: var(--e-accent-hover);
+}
+[data-skin="pearl"] .app-btn[data-variant="outline"],
+[data-skin="pearl"] .app-btn[data-variant="secondary"] {
+  border-color: var(--line-strong);
+  background: var(--pill-bg);
+  box-shadow: var(--pill-inset), var(--edge);
+}
+[data-skin="pearl"] .app-btn[data-variant="outline"]:hover:not(:disabled),
+[data-skin="pearl"] .app-btn[data-variant="secondary"]:hover:not(:disabled) {
+  box-shadow: var(--pill-inset), var(--edge), var(--e1);
+}
