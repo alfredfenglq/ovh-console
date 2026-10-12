@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sort"
 	"strconv"
 	"sync"
 
@@ -268,124 +267,76 @@ func idToString(v interface{}) string {
 	}
 }
 
-// RenewLadderAttempt 一次组合尝试的留痕(payload 键名 + 结果),全灭时随响应带回,
-// 否则只有最后一级错误可见,中间每级被什么挡住完全丢失(实测排障时就吃了这个亏)。
-type RenewLadderAttempt struct {
-	Route   string   `json:"route"` // legacy = .../serviceInfos,services = /services/{id}
-	Payload []string `json:"payload"`
-	Error   string   `json:"error"`
+// RenewRouteError 一条文档路由的拒绝留痕(路由名 + 原始错误)。
+type RenewRouteError struct {
+	Route string `json:"route"`
+	Error string `json:"error"`
 }
 
-// RenewLadderError 全部组合都被拒。Attempts 是逐级留痕。
-type RenewLadderError struct {
-	Attempts []RenewLadderAttempt
+// RenewDualError 两条文档路由都被拒。Attempts 按尝试顺序带回原始错误。
+type RenewDualError struct {
+	Attempts []RenewRouteError
 }
 
-func (e *RenewLadderError) Error() string {
+func (e *RenewDualError) Error() string {
 	if len(e.Attempts) == 0 {
-		return "renew 全部组合被拒"
+		return "renew 修改被拒"
 	}
-	last := e.Attempts[len(e.Attempts)-1]
-	return fmt.Sprintf("renew 全部 %d 种组合被拒,最后错误: %s", len(e.Attempts), last.Error)
+	return e.Attempts[len(e.Attempts)-1].Error
 }
 
-// putServiceRenew 发 renew 修改(独服 / VPS 的 PUT .../serviceInfos 共用)。
-//
-// OVH 对 renew 载荷的校验持续收紧且文档一直滞后,US 实测已出现三族拒绝
-// (参数废弃 / 模式键同现即拒 / schema 必填),auto 组合可用而 manual 的
-// 已知组合全灭。这里把"能表达目标语义的键组合"按从全到简逐级试:
-//   0 原始载荷(老区契约,含 manualPayment)
-//   1 去 manualPayment(EU/CA 新契约)
-//   2 再去 automatic(试探:automatic 缺席)
-//   3 再去 period(试探:manual 状态下 period 冲突)
-//   4 最小双键 {automatic, deleteAtExpiration}(去掉 forced 透传)
-// 任一级成功即返回;全部被拒返回 RenewLadderError(逐级留痕)。
-// 非"400+renew 字段族"的错误(权限/不存在/状态)直接冒泡,不继续试。
-// putServiceRenew 单服务续费方式修改的完整路径:
-//   1) 老路由 PUT .../{sn}/serviceInfos(一直用的,EU/CA 正常)
-//   2) 全灭且 serviceId 已知 → 文档同模型的新路由 PUT /services/{serviceId}
-//      (官方文档两条都写;US 的老路由 live 校验已收紧到手动组合全灭,换新路由是
-//       文档内的正解,不是试错)。两级留痕合并返回。
+// putServiceRenew 按官方文档修改单服务续费方式:
+// 载荷 = service.RenewType 文档字段原样(handler 按模式取值,不删不改);
+// 路由 = 文档给出的两条等价端点,先老的 PUT .../{sn}/serviceInfos,
+// 被 400 拒时换新的 PUT /services/{serviceId},载荷不变。
+// 两条都被拒 = OVH live 校验与其文档冲突,两级原始错误全部带回。
+// 非 400(权限/不存在/状态)直接冒泡,不换路由。
 func putServiceRenew(client *ovhsdk.Client, legacyPath string, serviceId *int64, next map[string]interface{}) error {
-	err := putServiceRenewRoute(client, "legacy", legacyPath, next)
-	if err == nil {
-		return nil
-	}
-	lad := &RenewLadderError{}
-	if !errors.As(err, &lad) {
-		return err // 非 400+renew 字段族(权限/状态),换路由也没意义
+	routes := []struct {
+		name string
+		path string
+	}{
+		{"serviceInfos", legacyPath},
 	}
 	if serviceId != nil {
-		err2 := putServiceRenewRoute(client, "services", fmt.Sprintf("/services/%d", *serviceId), next)
-		if err2 == nil {
-			return nil
-		}
-		if lad2, ok := err2.(*RenewLadderError); ok {
-			lad.Attempts = append(lad.Attempts, lad2.Attempts...)
-		} else {
-			return err2
-		}
+		routes = append(routes, struct {
+			name string
+			path string
+		}{"services", fmt.Sprintf("/services/%d", *serviceId)})
 	}
-	return lad
-}
-
-func putServiceRenewRoute(client *ovhsdk.Client, route, path string, next map[string]interface{}) error {
-	attempts := []map[string]interface{}{next}
-	drop := func(src map[string]interface{}, keys ...string) map[string]interface{} {
-		out := make(map[string]interface{}, len(src))
-	OUT:
-		for k, v := range src {
-			for _, d := range keys {
-				if k == d {
-					continue OUT
-				}
-			}
-			out[k] = v
-		}
-		return out
-	}
-	a1 := drop(next, "manualPayment")
-	a2 := drop(a1, "automatic")
-	a3 := drop(a2, "period")
-	a4 := map[string]interface{}{}
-	if v, ok := next["automatic"]; ok {
-		a4["automatic"] = v
-	}
-	if v, ok := next["deleteAtExpiration"]; ok {
-		a4["deleteAtExpiration"] = v
-	}
-	attempts = append(attempts, a1, a2, a3, a4)
-
-	lad := &RenewLadderError{}
-	for _, a := range attempts {
-		keys := make([]string, 0, len(a))
-		for k := range a {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		err := client.Put(path, map[string]interface{}{"renew": a}, nil)
+	dual := &RenewDualError{}
+	for _, r := range routes {
+		err := client.Put(r.path, map[string]interface{}{"renew": next}, nil)
 		if err == nil {
 			return nil
 		}
-		lad.Attempts = append(lad.Attempts, RenewLadderAttempt{Route: route, Payload: keys, Error: err.Error()})
 		if !ovh.IsRenewPayloadRejected(err) {
 			return err
 		}
+		dual.Attempts = append(dual.Attempts, RenewRouteError{Route: r.name, Error: err.Error()})
 	}
-	return lad
+	if len(dual.Attempts) == 1 {
+		// 只有一条路由可用(没拿到 serviceId):直接回它的错误,别包一层
+		return &ovhRouteErr{dual.Attempts[0].Error}
+	}
+	return dual
 }
 
+// ovhRouteErr 让单路由场景也走 respondOVHError 的常规路径
+type ovhRouteErr struct{ msg string }
+
+func (e *ovhRouteErr) Error() string { return e.msg }
 
 // respondRenewError putServiceRenew 失败的统一出口:梯子全灭时把逐级组合与
 // 各级原始错误一并带回(前端提示仍用汇总文案),便于一次定位 OVH 校验的真实要求。
 func respondRenewError(c *gin.Context, state *app.State, svc string, err error) {
-	var lad *RenewLadderError
-	if errors.As(err, &lad) {
-		state.Logger.Warn(fmt.Sprintf("renew 组合梯全灭(%s): %+v", svc, lad.Attempts), "server_control")
+	var dual *RenewDualError
+	if errors.As(err, &dual) {
+		state.Logger.Warn(fmt.Sprintf("renew 两条文档路由都被拒(%s): %+v", svc, dual.Attempts), "server_control")
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success":  false,
-			"error":    ovh.Explain(errors.New(lad.Error())),
-			"attempts": lad.Attempts,
+			"error":    ovh.Explain(errors.New(dual.Error())),
+			"attempts": dual.Attempts,
 		})
 		return
 	}
