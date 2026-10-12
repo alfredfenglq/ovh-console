@@ -139,7 +139,7 @@ function LogsPage() {
 
       {skin === "pearl" ? (
         <PearlSearchForm>
-          <div className="relative field" style={{ flex: "1 1 220px" }}>
+          <div className="relative field is-wide" style={{ flex: "1 1 240px", maxWidth: 480 }}>
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
             <Input
               placeholder={t("logs.searchPlaceholder")}
@@ -148,22 +148,26 @@ function LogsPage() {
               className="pl-9"
             />
           </div>
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
-              <SelectItem value="INFO">INFO</SelectItem>
-              <SelectItem value="WARNING">WARNING</SelectItem>
-              <SelectItem value="ERROR">ERROR</SelectItem>
-              <SelectItem value="DEBUG">DEBUG</SelectItem>
-            </SelectContent>
-          </Select>
-          <label className="inline-flex items-center gap-2 text-sm cursor-pointer field" style={{ flex: "0 0 auto" }}>
-            <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
-            <span>{t("logs.autoRefresh")}</span>
-          </label>
+          <div className="field" style={{ width: 150, flex: "0 0 auto" }}>
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("logs.allLevels")}</SelectItem>
+                <SelectItem value="INFO">INFO</SelectItem>
+                <SelectItem value="WARNING">WARNING</SelectItem>
+                <SelectItem value="ERROR">ERROR</SelectItem>
+                <SelectItem value="DEBUG">DEBUG</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="search-actions">
+            <label className="inline-flex items-center gap-2 text-sm cursor-pointer">
+              <Checkbox checked={autoRefresh} onCheckedChange={(c) => setAutoRefresh(c === true)} />
+              <span>{t("logs.autoRefresh")}</span>
+            </label>
+          </div>
         </PearlSearchForm>
       ) : (
         <Card>
