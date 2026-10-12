@@ -284,6 +284,10 @@ func GetVpsServiceInfo(state *app.State) gin.HandlerFunc {
 			"renewalManualPayment":      manualPay,
 			"possibleRenewPeriod":       possiblePeriods,
 		}
+		// 同独服:US 区手动续费已被 OVH 下线,前端禁用该选项
+		if acc, ok := ovhAccountFor(state, c); ok && ovh.EndpointRegion(acc.Endpoint) == "US" {
+			si["renewalManualUnsupported"] = true
+		}
 		// 同独服:终止状态从 lifecycle.pendingActions 读,不赌 renew 字段
 		attachTerminationState(state, client, serviceIDForVps, svc, "vps_control", si)
 		c.JSON(http.StatusOK, gin.H{"success": true, "serviceInfo": si})

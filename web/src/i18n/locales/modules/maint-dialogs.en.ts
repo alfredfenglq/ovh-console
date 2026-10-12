@@ -71,6 +71,7 @@ const pack: MaintDialogsPack = {
         manualDesc: "Pay manually before expiry, otherwise the service is terminated",
         delete: "Delete at expiration",
         deleteDesc: "Usable until the expiry date, destroyed afterwards",
+        manualUnsupported: "OVH no longer offers manual renewal in the US region — automatic renewal only (same as the OVH Control Panel)",
       },
       current: "current",
       periodLabel: "Renewal period",

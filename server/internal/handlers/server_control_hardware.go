@@ -478,6 +478,11 @@ func GetServiceInfo(state *app.State) gin.HandlerFunc {
 			"renewalManualPayment":      manualPayment,
 			"possibleRenewPeriod":       possiblePeriods,
 		}
+		// OVH 已下线 US 区的手动续费(其 Manager 源码 isUSRegion 即移除 MANUAL 模式,
+		// API 对一切手动载荷回 400)。前端据此禁用该选项,与官方控制台行为一致。
+		if acc, ok := ovhAccountFor(state, c); ok && ovh.EndpointRegion(acc.Endpoint) == "US" {
+			si["renewalManualUnsupported"] = true
+		}
 		// 终止状态从 lifecycle.pendingActions 读(文档指定的读回路径);
 		// renew.deleteAtExpiration 会不会随 terminationPolicy 同步,文档没说,不能赌它
 		attachTerminationState(state, client, serviceIDForDedicated, svc, "server_control", si)

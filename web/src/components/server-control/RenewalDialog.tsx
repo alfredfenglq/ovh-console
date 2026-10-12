@@ -192,13 +192,19 @@ export function RenewalDialog({
             <div className="space-y-1.5">
               {MODE_OPTIONS.map((opt) => {
                 const selected = mode === opt.value;
+                // OVH 已下线 US 区手动续费(其 Manager 同样不提供)—— 禁用并说明,
+                // 不让用户点了才吃 400
+                const unsupported = opt.value === "manual" && !!(info as any).renewalManualUnsupported;
                 return (
                   <button
                     key={opt.value}
                     type="button"
+                    disabled={unsupported}
                     onClick={() => setMode(opt.value)}
+                    title={unsupported ? t("maint.renewal.manualUnsupported") : undefined}
                     className={[
                       "w-full text-left rounded-xl border px-3.5 py-2.5 transition-colors",
+                      unsupported ? "opacity-50 cursor-not-allowed" : "",
                       selected
                         ? "border-primary bg-primary/5"
                         : "border-border bg-secondary/30 hover:bg-secondary/50",
@@ -220,7 +226,9 @@ export function RenewalDialog({
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-1 ml-6">{t(opt.descKey)}</p>
+                    <p className="text-[11px] text-muted-foreground mt-1 ml-6">
+                      {unsupported ? t("maint.renewal.manualUnsupported") : t(opt.descKey)}
+                    </p>
                   </button>
                 );
               })}

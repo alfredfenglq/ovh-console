@@ -68,6 +68,7 @@ export const maintDialogsZh = {
         manualDesc: "到期前需手动付款,不付则服务终止",
         delete: "到期终止",
         deleteDesc: "到期日之前照常使用,到期后才销毁",
+        manualUnsupported: "OVH 已停止美国区手动续费,该区仅支持自动续费(与 OVH 控制台一致)",
       },
       current: "当前",
       periodLabel: "续费周期",

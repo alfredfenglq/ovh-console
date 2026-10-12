@@ -97,6 +97,8 @@ export interface ServiceInfo {
   renewalForced: boolean;
   /** 是否要求手动支付(true 时余额扣款会跳过,需用户手动付) */
   renewalManualPayment: boolean;
+  /** US 区:OVH 已下线手动续费(Manager 源码实锤),前端禁用该选项 */
+  renewalManualUnsupported?: boolean;
   /** OVH 允许的续费周期列表(月数),前端 select 选项用 */
   possibleRenewPeriod: number[];
 }
