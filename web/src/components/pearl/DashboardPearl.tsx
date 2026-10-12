@@ -89,7 +89,7 @@ export function DashboardPearl() {
         {/* 主卡:活跃队列 */}
         <section className="bento bento-hero">
           <div className="hero-head">
-            <span className="eyebrow">{t("dashboard.activeQueue")}</span>
+            <span className="eyebrow">{t("dashboard.kpi.activeQueues")}</span>
             <span className="bento-meta">{stats.isPending ? "…" : s ? `SNIPER / ${s.totalServers ?? 0} SRV` : "—"}</span>
           </div>
           <div className="hero-body">
@@ -101,29 +101,29 @@ export function DashboardPearl() {
               </div>
               <div className="hero-delta">
                 <span className="faint">{t("dashboard.heroDeltaHint")}</span>
-                <span className="delta-pill is-new">{t("dashboard.wonCount", { n: s?.purchaseSuccess ?? 0 })}</span>
+                <span className="delta-pill is-new">{t("dashboard.kpi.wonCount", { n: s?.purchaseSuccess ?? 0 })}</span>
               </div>
               <dl className="hero-readouts">
                 <div>
-                  <dt>{t("dashboard.totalServers")}</dt>
+                  <dt>{t("dashboard.kpi.totalServers")}</dt>
                   <dd className="tnum">{s?.totalServers ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt>{t("dashboard.available")}</dt>
+                  <dt>{t("dashboard.kpi.available")}</dt>
                   <dd className="tnum">{s?.availableServers ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt>{t("dashboard.purchaseFailed")}</dt>
+                  <dt>{t("dashboard.kpi.purchaseFailed")}</dt>
                   <dd className="tnum">{s?.purchaseFailed ?? "—"}</dd>
                 </div>
               </dl>
             </div>
             <div className="hero-actions">
               <Link to="/queue" className="pill-btn is-dark">
-                {t("dashboard.viewQueue")} <ArrowRight size={14} />
+                {t("dashboard.kpi.viewQueue")} <ArrowRight size={14} />
               </Link>
               <Link to="/servers" className="pill-btn">
-                {t("dashboard.viewServers")}
+                {t("dashboard.kpi.viewServers")}
               </Link>
             </div>
           </div>

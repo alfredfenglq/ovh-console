@@ -116,7 +116,11 @@ export function AppShell() {
   return (
     <div className="stage">
       <div
-        className={cn("app-frame", collapsed && !mobile && "is-collapsed", mobile && mobileOpen && "is-mobile-open")}
+        className={cn(
+          "app-frame is-entrance-ready",
+          collapsed && !mobile && "is-collapsed",
+          mobile && mobileOpen && "is-mobile-open",
+        )}
       >
         <aside className="rail">
           <Link to="/" className="rail-brand" aria-label={t("nav.appName")}>
@@ -233,7 +237,7 @@ export function AppShell() {
             }}
           >
             {/* 滚动宿主在 content 上:页面只管自己的节奏(.page 内边距由 layout.css 管) */}
-            <div className="page">
+            <div className="page is-entrance-ready">
               <Outlet />
             </div>
           </div>
