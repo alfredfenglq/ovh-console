@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { PanelLeftClose, PanelLeftOpen, Menu, Shield } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Menu, Shield, Github } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { NAV_GROUPS } from "@/components/layout/Sidebar";
@@ -176,6 +176,17 @@ export function AppShell() {
               )}
               <span className="nav-label">{collapsed && !mobile ? "" : t("shell.collapseRail")}</span>
             </button>
+            {/* 冠名:GitHub 仓库 + 作者。收起态只剩图标,label 被他的规则自动隐藏 */}
+            <a
+              href="https://github.com/gokele/ovh"
+              target="_blank"
+              rel="noreferrer"
+              className="nav-item"
+              title="github.com/gokele/ovh"
+            >
+              <Github className="nav-ico" size={16} strokeWidth={1.9} />
+              <span className="nav-label">{t("shell.cola")}</span>
+            </a>
             {version && (
               <div className="nav-item" style={{ cursor: "default" }}>
                 <span className="nav-label" style={{ fontSize: 11, color: "var(--ink-faint)" }}>
