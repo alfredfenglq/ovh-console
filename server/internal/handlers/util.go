@@ -271,6 +271,7 @@ func idToString(v interface{}) string {
 // RenewLadderAttempt 一次组合尝试的留痕(payload 键名 + 结果),全灭时随响应带回,
 // 否则只有最后一级错误可见,中间每级被什么挡住完全丢失(实测排障时就吃了这个亏)。
 type RenewLadderAttempt struct {
+	Route   string   `json:"route"` // legacy = .../serviceInfos,services = /services/{id}
 	Payload []string `json:"payload"`
 	Error   string   `json:"error"`
 }
@@ -300,7 +301,35 @@ func (e *RenewLadderError) Error() string {
 //   4 最小双键 {automatic, deleteAtExpiration}(去掉 forced 透传)
 // 任一级成功即返回;全部被拒返回 RenewLadderError(逐级留痕)。
 // 非"400+renew 字段族"的错误(权限/不存在/状态)直接冒泡,不继续试。
-func putServiceRenew(client *ovhsdk.Client, path string, next map[string]interface{}) error {
+// putServiceRenew 单服务续费方式修改的完整路径:
+//   1) 老路由 PUT .../{sn}/serviceInfos(一直用的,EU/CA 正常)
+//   2) 全灭且 serviceId 已知 → 文档同模型的新路由 PUT /services/{serviceId}
+//      (官方文档两条都写;US 的老路由 live 校验已收紧到手动组合全灭,换新路由是
+//       文档内的正解,不是试错)。两级留痕合并返回。
+func putServiceRenew(client *ovhsdk.Client, legacyPath string, serviceId *int64, next map[string]interface{}) error {
+	err := putServiceRenewRoute(client, "legacy", legacyPath, next)
+	if err == nil {
+		return nil
+	}
+	lad := &RenewLadderError{}
+	if !errors.As(err, &lad) {
+		return err // 非 400+renew 字段族(权限/状态),换路由也没意义
+	}
+	if serviceId != nil {
+		err2 := putServiceRenewRoute(client, "services", fmt.Sprintf("/services/%d", *serviceId), next)
+		if err2 == nil {
+			return nil
+		}
+		if lad2, ok := err2.(*RenewLadderError); ok {
+			lad.Attempts = append(lad.Attempts, lad2.Attempts...)
+		} else {
+			return err2
+		}
+	}
+	return lad
+}
+
+func putServiceRenewRoute(client *ovhsdk.Client, route, path string, next map[string]interface{}) error {
 	attempts := []map[string]interface{}{next}
 	drop := func(src map[string]interface{}, keys ...string) map[string]interface{} {
 		out := make(map[string]interface{}, len(src))
@@ -338,7 +367,7 @@ func putServiceRenew(client *ovhsdk.Client, path string, next map[string]interfa
 		if err == nil {
 			return nil
 		}
-		lad.Attempts = append(lad.Attempts, RenewLadderAttempt{Payload: keys, Error: err.Error()})
+		lad.Attempts = append(lad.Attempts, RenewLadderAttempt{Route: route, Payload: keys, Error: err.Error()})
 		if !ovh.IsRenewPayloadRejected(err) {
 			return err
 		}

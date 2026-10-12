@@ -352,8 +352,12 @@ func UpdateVpsRenewal(state *app.State) gin.HandlerFunc {
 		} else if pv, ok := renew["period"]; ok && pv != nil {
 			next["period"] = pv
 		}
+		var sid *int64
+		if v, ok := numconv.ToInt64(info["serviceId"]); ok {
+			sid = &v
+		}
 		// services.Service 只有 renew 可写,整对象发回去会被 400
-		if err := putServiceRenew(client, "/vps/"+svc+"/serviceInfos", next); err != nil {
+		if err := putServiceRenew(client, "/vps/"+svc+"/serviceInfos", sid, next); err != nil {
 			respondRenewError(c, state, svc, err)
 			return
 		}
