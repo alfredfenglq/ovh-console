@@ -197,15 +197,16 @@ export function DashboardPearl() {
             <TickRing value={sys.data?.memory.percent} label="MEM" />
             <TickRing value={sys.data?.disk.percent} label="DISK" />
           </div>
+          {/* 每条小字自身不折行(折行会把“剩余 5.6G”甩到第二行读不成句);放不下时整条换行 */}
           {(sys.data?.memory || sys.data?.disk) && (
             <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 10 }}>
-              <span className="readout-sub">
+              <span className="readout-sub" style={{ whiteSpace: "nowrap" }}>
                 {t("dashboard.memory")} {t("dashboard.usedFree", { used: fmtBytes(sys.data.memory.usedBytes), free: fmtBytes(sys.data.memory.totalBytes - sys.data.memory.usedBytes) })}
               </span>
-              <span className="readout-sub">
-                {t("dashboard.disk")} {t("dashboard.usedFree", { used: fmtBytes(sys.data.disk.usedBytes), free: fmtBytes(sys.data.disk.totalBytes - sys.data.disk.usedBytes) })} · {sys.data.disk.path}
+              <span className="readout-sub" style={{ whiteSpace: "nowrap" }}>
+                {t("dashboard.disk")} {t("dashboard.usedFree", { used: fmtBytes(sys.data.disk.usedBytes), free: fmtBytes(sys.data.disk.totalBytes - sys.data.disk.usedBytes) })}
               </span>
-              {sys.data ? <span className="readout-sub">{t("dashboard.cores", { n: sys.data.cpu.cores })}</span> : null}
+              {sys.data ? <span className="readout-sub" style={{ whiteSpace: "nowrap" }}>{t("dashboard.cores", { n: sys.data.cpu.cores })}</span> : null}
             </div>
           )}
         </section>
