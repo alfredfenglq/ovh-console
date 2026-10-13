@@ -174,10 +174,11 @@ export function DashboardPearl() {
               unknown={unknown}
             />
           </div>
-          <div className="side-foot">
+          <div className="side-foot" style={{ flexWrap: "wrap", rowGap: 6 }}>
             <span className="faint">{t("dashboard.systemVersion")}</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              {/* 更新按钮跟随版本号:没新版本时组件返回 null,只显示版本 */}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 4 }}>
+              {/* 更新按钮跟随版本号:没新版本时组件返回 null,只显示版本。
+                  有更新时这一串较长,放不下就整体换行左对齐,不向左挤压标签 */}
               <UpdateButton check={update.data} />
               <span className="mono-time">v{version.data || "—"}</span>
             </span>
