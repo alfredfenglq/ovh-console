@@ -236,3 +236,11 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
 
 /* 系统状态侧卡限宽:窄视口 hero 占满整行后,侧卡全幅拉伸过宽难读 */
 [data-skin="pearl"] .bento-side { max-width: 560px; }
+
+/* 工作台中档断点:hero 占满后,系统状态与宿主机资源并排各半,最近队列整行 */
+@media (max-width: 1280px) {
+  /* 小屏:每张卡独占一行,纵向堆叠 */
+  [data-skin="pearl"] .bento-side,
+  [data-skin="pearl"] .bento-wide,
+  [data-skin="pearl"] .bento-narrow { grid-column: 1 / -1; max-width: none; }
+}
