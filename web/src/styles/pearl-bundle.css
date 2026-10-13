@@ -233,3 +233,6 @@ html.dark[data-skin="pearl"] .app-card > .border-b {
 .queue-dense .app-card { border-radius: var(--r-md); }
 .queue-dense .app-card > * { --row-scale: 0.85; }
 .queue-dense .app-card { padding: 0.6; }
+
+/* 系统状态侧卡限宽:窄视口 hero 占满整行后,侧卡全幅拉伸过宽难读 */
+[data-skin="pearl"] .bento-side { max-width: 560px; }
