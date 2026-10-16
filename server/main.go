@@ -268,6 +268,7 @@ func main() {
 		api.GET("/monitor/subscriptions", handlers.GetSubscriptions(state, mon))
 		api.POST("/monitor/subscriptions", handlers.AddSubscription(state, mon))
 		api.PUT("/monitor/subscriptions/:planCode", handlers.UpdateSubscription(state, mon))
+		api.POST("/monitor/subscriptions/:planCode/pause", handlers.PauseSubscription(state, mon))
 		api.POST("/monitor/subscriptions/batch-add-all", handlers.BatchAddAll(state, mon))
 		api.DELETE("/monitor/subscriptions/clear", handlers.ClearSubscriptions(state, mon))
 		api.DELETE("/monitor/subscriptions/:planCode", handlers.RemoveSubscription(state, mon))
