@@ -56,6 +56,7 @@ func toDBSub(s *Subscription) types.Subscription {
 		Quantity:           s.Quantity,
 		AutoOrderAccountID: s.AutoOrderAccountID,
 		AutoPay:            s.AutoPay,
+		Paused:             s.Paused,
 		Options:            s.Options,
 	}
 }

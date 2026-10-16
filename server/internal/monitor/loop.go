@@ -133,6 +133,9 @@ func (m *Monitor) monitorLoopGen(gen int64) {
 			sem := make(chan struct{}, workers)
 			var wg sync.WaitGroup
 			for _, sub := range subsCopy {
+				if sub.Paused {
+					continue // 暂停的订阅:保留配置与历史,本轮不检查
+				}
 				running := m.stillMine(gen)
 				if !running {
 					break

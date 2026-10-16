@@ -101,6 +101,9 @@ type Subscription struct {
 	Quantity           int               `json:"quantity,omitempty"`
 	AutoOrderAccountID string            `json:"autoOrderAccountId,omitempty"` // 空 = 触发时只通知不下单
 	AutoPay            bool              `json:"autoPay,omitempty"`            // 下单后自动付款(显式开关,默认关)
+	// Paused 暂停监控:检查循环跳过,订阅与历史保留,恢复即继续。
+	// 场景:暂时不想收通知但不想删掉重建(OVH US 已下线手动续费,删了重加门槛更高)
+	Paused bool `json:"paused,omitempty"`
 	// Options 只盯这套配置。空 = 全部配置(老行为)。
 	// 一个 planCode 底下常有好几套内存/存储组合,而通知和自动下单是按配置逐套触发的,
 	// "自动抢 1 台"在三套配置同时补货时会下三次单(再乘机房数)。

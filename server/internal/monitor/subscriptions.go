@@ -163,6 +163,22 @@ func (m *Monitor) UpdateSubscriptionFields(planCode string, datacenters []string
 	}
 }
 
+// SetPaused 设置暂停/恢复。optionsKey 空 = 定位第一条(planCode 老入口兼容)。
+// 返回 false = 没找到。
+func (m *Monitor) SetPaused(planCode, optionsKey string, paused bool) bool {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+	for _, s := range m.subscriptions {
+		if s.PlanCode == planCode && (optionsKey == "" || OptionsKey(s.Options) == optionsKey) {
+			s.mu.Lock()
+			s.Paused = paused
+			s.mu.Unlock()
+			return true
+		}
+	}
+	return false
+}
+
 // RemoveSubscriptionExact 按 planCode+配置组合精确删除(卡片级删除);
 // optionsKey 传空串 = 删除该 planCode 的第一条(兼容 TG 等按型号的老入口)。
 func (m *Monitor) RemoveSubscriptionExact(planCode, optionsKey string) bool {

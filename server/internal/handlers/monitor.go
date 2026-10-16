@@ -223,6 +223,29 @@ func BatchAddAll(state *app.State, mon *monitor.Monitor) gin.HandlerFunc {
 	}
 }
 
+// PauseSubscription POST /api/monitor/subscriptions/:planCode/pause
+// body: { optionsKey?: string, paused: bool }
+// 暂停 = 检查循环跳过该订阅(通知/自动下单全部停),订阅与历史保留;恢复即继续。
+// ?optionsKey 与删除同参:同型号多条订阅时精确到某一条,不传默认第一条。
+func PauseSubscription(state *app.State, mon *monitor.Monitor) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		planCode := c.Param("planCode")
+		var body struct {
+			OptionsKey string `json:"optionsKey"`
+			Paused     *bool  `json:"paused"`
+		}
+		_ = c.ShouldBindJSON(&body)
+		paused := body.Paused != nil && *body.Paused
+		if !mon.SetPaused(planCode, body.OptionsKey, paused) {
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "订阅不存在", "code": "E5B2D91A4"})
+			return
+		}
+		mon.SaveToDB()
+		state.Logger.Info(fmt.Sprintf("订阅 %s(%s) 已%s监控", planCode, body.OptionsKey, map[bool]string{true: "暂停", false: "恢复"}[paused]), "monitor")
+		c.JSON(http.StatusOK, gin.H{"status": "success", "paused": paused})
+	}
+}
+
 // RemoveSubscription DELETE /api/monitor/subscriptions/:planCode
 func RemoveSubscription(state *app.State, mon *monitor.Monitor) gin.HandlerFunc {
 	return func(c *gin.Context) {

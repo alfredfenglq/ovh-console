@@ -25,6 +25,7 @@ export interface MonitorSubscription {
    * 后端引擎一直支持这个字段，只是前端以前没接，所以网页建的订阅永远是「盯全部」。
    */
   options?: string[];
+  paused?: boolean;
   lastStatus: Record<string, string>;
   createdAt: string;
 }
@@ -131,6 +132,23 @@ export function useUpdateMonitorSubscription() {
 export const useCreateMonitorSubscription = useUpsertMonitorSubscription;
 
 /** 移除订阅 */
+export function usePauseMonitorSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { planCode: string; optionsKey?: string; paused: boolean }) =>
+      (
+        await api.post(`/monitor/subscriptions/${v.planCode}/pause`, {
+          optionsKey: v.optionsKey,
+          paused: v.paused,
+        })
+      ).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.monitor.list() });
+      qc.invalidateQueries({ queryKey: qk.monitor.status() });
+    },
+  });
+}
+
 export function useRemoveMonitorSubscription() {
   const qc = useQueryClient();
   return useMutation({

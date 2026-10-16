@@ -20,6 +20,7 @@ type monitorSubRow struct {
 	Quantity           int    `db:"quantity"`
 	AutoOrderAccountID string `db:"auto_order_account_id"`
 	AutoPay            int    `db:"auto_pay"`
+	Paused             int    `db:"paused"`
 	OptionsJSON        string `db:"options"`
 }
 
@@ -48,6 +49,7 @@ func rowToMonitorSub(r monitorSubRow) types.Subscription {
 		Quantity:           r.Quantity,
 		AutoOrderAccountID: r.AutoOrderAccountID,
 		AutoPay:            r.AutoPay == 1,
+		Paused:            r.Paused == 1,
 		Options:            opts,
 	}
 }
@@ -100,6 +102,7 @@ func monitorSubToRow(s types.Subscription) (monitorSubRow, error) {
 		Quantity:           s.Quantity,
 		AutoOrderAccountID: s.AutoOrderAccountID,
 		AutoPay:            bi(s.AutoPay),
+		Paused:            bi(s.Paused),
 		OptionsJSON:        string(optsJSON),
 	}, nil
 }

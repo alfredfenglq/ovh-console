@@ -11,8 +11,7 @@ import {
   Plus,
   AlertTriangle,
   Pencil,
-  HelpCircle,
-} from "lucide-react";
+  HelpCircle, Pause, Play } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { HeatGrid } from "@/components/pearl/HeatGrid";
@@ -37,8 +36,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  DialogTitle } from "@/components/ui/dialog";
 import {
   useMonitorList,
   useMonitorStatus,
@@ -48,8 +46,7 @@ import {
   useUpdateMonitorSubscription,
   useMonitorHistory,
   type MonitorSubscription,
-  useSetMonitorInterval,
-} from "@/hooks/use-monitor";
+  useSetMonitorInterval, usePauseMonitorSubscription } from "@/hooks/use-monitor";
 import { useNotifyGate } from "@/hooks/use-notify-channels";
 import { toast } from "sonner";
 import { useServers } from "@/hooks/use-servers";
@@ -74,6 +71,7 @@ function MonitorPage() {
   const events = useStockEvents(list.data, "server");
   const status = useMonitorStatus();
   const remove = useRemoveMonitorSubscription();
+  const pause = usePauseMonitorSubscription();
   const clear = useClearMonitor();
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
@@ -255,7 +253,15 @@ function MonitorPage() {
             <SubRow
               key={subKey(s)}
               sub={s}
+              paused={!!s.paused}
               expanded={expanded === subKey(s)}
+              onTogglePause={() =>
+                pause.mutate({
+                  planCode: s.planCode,
+                  optionsKey: [...(s.options || [])].sort().join(","),
+                  paused: !s.paused,
+                })
+              }
               onToggleExpand={() =>
                 setExpanded((curr) => (curr === subKey(s) ? null : subKey(s)))
               }
@@ -346,19 +352,23 @@ function MonitorPage() {
 function SubRow({
   sub,
   expanded,
+  paused,
+  onTogglePause,
   onToggleExpand,
   onEdit,
   onDelete,
 }: {
   sub: MonitorSubscription;
   expanded: boolean;
+  paused: boolean;
+  onTogglePause: () => void;
   onToggleExpand: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
   return (
-    <Card>
+    <Card className={paused ? "opacity-60" : undefined}>
       <CardContent className="p-5">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">
@@ -385,6 +395,7 @@ function SubRow({
                   {t("monitor.row.watchAll")}
                 </Chip>
               )}
+              {sub.paused && <Chip tone="warning">{t("monitor.row.paused")}</Chip>}
               {sub.notifyAvailable && <Chip tone="success">{t("monitor.row.notifyAvailable")}</Chip>}
               {sub.notifyUnavailable && <Chip tone="warning">{t("monitor.row.notifyUnavailable")}</Chip>}
               {sub.autoOrder && sub.autoOrderAccountId ? (
@@ -406,6 +417,15 @@ function SubRow({
             </div>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={paused ? t("monitor.row.resumeAria") : t("monitor.row.pauseAria")}
+              title={paused ? t("monitor.row.resumeAria") : t("monitor.row.pauseAria")}
+              onClick={onTogglePause}
+            >
+              {paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+            </Button>
             <Button
               variant="ghost"
               size="icon"
