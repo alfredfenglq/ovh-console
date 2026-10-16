@@ -1,6 +1,8 @@
 package monitor
 
 import (
+	"sort"
+	"strings"
 	"fmt"
 	"time"
 )
@@ -16,8 +18,10 @@ func (m *Monitor) AddSubscription(planCode string, datacenters []string, notifyA
 	defer m.subsMu.Unlock()
 
 	for _, s := range m.subscriptions {
-		if s.PlanCode == planCode {
-			m.state.Logger.Warn(fmt.Sprintf("订阅已存在: %s，将更新配置（不会重置状态，避免重复通知）", planCode), "monitor")
+		// 同 planCode 的不同配置(options)是**不同的订阅** —— 用户抢同型号不同内存
+		// 就是两条。只有 planCode+配置组合都相同才算"已存在",就地更新。
+		if s.PlanCode == planCode && OptionsKey(s.Options) == OptionsKey(options) {
+			m.state.Logger.Warn(fmt.Sprintf("订阅已存在: %s(%s)，将更新配置（不会重置状态，避免重复通知）", planCode, OptionsKey(options)), "monitor")
 			if datacenters == nil {
 				datacenters = []string{}
 			}
@@ -98,6 +102,87 @@ func (m *Monitor) AddSubscription(planCode string, datacenters []string, notifyA
 		dcsStr = fmt.Sprintf("%v", datacenters)
 	}
 	m.state.Logger.Info(fmt.Sprintf("添加订阅: %s, 数据中心: %s", displayName, dcsStr), "monitor")
+}
+
+// OptionsKey 把配置筛选规范化成可比较的键(排序后逗号连接;空 = 盯全部配置)。
+// 订阅的身份 = planCode + OptionsKey。
+func OptionsKey(options []string) string {
+	if len(options) == 0 {
+		return ""
+	}
+	c := append([]string(nil), options...)
+	sort.Strings(c)
+	return strings.Join(c, ",")
+}
+
+// HasSubscriptionWithOptions 该 planCode 下是否已存在「另一条」配置组合等于
+// targetKey 的订阅(ownKey = 当前这条自己的组合,相同则不算冲突)。
+func (m *Monitor) HasSubscriptionWithOptions(planCode, targetKey, ownKey string) bool {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+	for _, s := range m.subscriptions {
+		if s.PlanCode == planCode && OptionsKey(s.Options) == targetKey && targetKey != ownKey {
+			return true
+		}
+	}
+	return false
+}
+
+// UpdateSubscriptionFields 按 planCode 定位第一条订阅,就地改字段(不新建,
+// 不重置 LastStatus / History)。编辑流程专用。
+func (m *Monitor) UpdateSubscriptionFields(planCode string, datacenters []string, notifyAvailable, notifyUnavailable bool,
+	autoOrder bool, quantity int, autoOrderAccountID string, autoPay bool, options []string) {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+	for _, s := range m.subscriptions {
+		if s.PlanCode != planCode {
+			continue
+		}
+		s.mu.Lock()
+		s.Datacenters = datacenters
+		s.NotifyAvailable = notifyAvailable
+		s.NotifyUnavailable = notifyUnavailable
+		s.AutoOrder = autoOrder
+		if autoOrder {
+			if quantity < 1 {
+				quantity = 1
+			}
+			s.Quantity = quantity
+		} else {
+			s.Quantity = 0
+		}
+		s.AutoOrderAccountID = autoOrderAccountID
+		s.AutoPay = autoPay && autoOrder
+		if options == nil {
+			options = []string{}
+		}
+		s.Options = options
+		s.mu.Unlock()
+		m.state.Logger.Info(fmt.Sprintf("已就地更新订阅: %s(%s)", planCode, OptionsKey(options)), "monitor")
+		return
+	}
+}
+
+// RemoveSubscriptionExact 按 planCode+配置组合精确删除(卡片级删除);
+// optionsKey 传空串 = 删除该 planCode 的第一条(兼容 TG 等按型号的老入口)。
+func (m *Monitor) RemoveSubscriptionExact(planCode, optionsKey string) bool {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+	original := len(m.subscriptions)
+	kept := make([]*Subscription, 0, len(m.subscriptions))
+	removed := false
+	for _, s := range m.subscriptions {
+		if !removed && s.PlanCode == planCode && (optionsKey == "" || OptionsKey(s.Options) == optionsKey) {
+			removed = true
+			continue
+		}
+		kept = append(kept, s)
+	}
+	if removed {
+		m.subscriptions = kept
+		m.state.Logger.Info(fmt.Sprintf("已移除订阅: %s(%s)", planCode, optionsKey), "monitor")
+	}
+	return len(m.subscriptions) < original
 }
 
 func (m *Monitor) RemoveSubscription(planCode string) bool {

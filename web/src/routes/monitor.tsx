@@ -62,6 +62,12 @@ export const Route = createFileRoute("/monitor")({
   component: MonitorPage,
 });
 
+
+/** 订阅身份 = planCode + 配置组合(同型号不同内存是两条独立订阅) */
+function subKey(s: { planCode: string; options?: string[] }) {
+  return `${s.planCode}|${[...(s.options || [])].sort().join(",")}`;
+}
+
 function MonitorPage() {
   const { t } = useTranslation();
   const list = useMonitorList();
@@ -247,17 +253,17 @@ function MonitorPage() {
         <div className="space-y-3">
           {subs.map((s) => (
             <SubRow
-              key={s.planCode}
+              key={subKey(s)}
               sub={s}
-              expanded={expanded === s.planCode}
+              expanded={expanded === subKey(s)}
               onToggleExpand={() =>
-                setExpanded((curr) => (curr === s.planCode ? null : s.planCode))
+                setExpanded((curr) => (curr === subKey(s) ? null : subKey(s)))
               }
               onEdit={() => {
                 setEditing(s);
                 setOpenAdd(true);
               }}
-              onDelete={() => setConfirmRemove(s.planCode)}
+              onDelete={() => setConfirmRemove(subKey(s))}
             />
           ))}
         </div>
@@ -295,7 +301,10 @@ function MonitorPage() {
             <Button
               variant="destructive"
               onClick={() => {
-                if (confirmRemove) remove.mutate(confirmRemove);
+                                if (confirmRemove) {
+                  const sub = subs.find((x) => subKey(x) === confirmRemove);
+                  remove.mutate({ planCode: sub?.planCode || confirmRemove, optionsKey: sub ? [...(sub.options || [])].sort().join(",") : undefined });
+                }
                 setConfirmRemove(null);
               }}
             >

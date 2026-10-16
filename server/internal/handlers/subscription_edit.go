@@ -103,9 +103,14 @@ func UpdateSubscription(state *app.State, mon *monitor.Monitor) gin.HandlerFunc 
 			region, subsidiary, regionWarning = mon.PreflightRegion(planCode, accountID)
 		}
 
-		// AddSubscription 对已存在的 planCode 是就地改配置,不会重置 LastStatus / History
-		mon.AddSubscription(planCode, datacenters, notifyAvailable, notifyUnavailable,
-			cur.ServerName, nil, nil, autoOrder, quantity, accountID, autoPay, options)
+		// 编辑 = 原地改这一条(planCode 定位)。若用户把配置改成与另一条同 planCode
+		// 订阅相同的组合,则冲突拒绝,避免悄悄合并两条
+		if mon.HasSubscriptionWithOptions(planCode, monitor.OptionsKey(options), monitor.OptionsKey(cur.Options)) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "已存在同型号同配置的订阅,无法改成重复配置", "code": "ED1A7C3F2"})
+			return
+		}
+		mon.UpdateSubscriptionFields(planCode, datacenters, notifyAvailable, notifyUnavailable,
+			autoOrder, quantity, accountID, autoPay, options)
 		mon.SaveToDB()
 		state.Logger.Info("更新服务器订阅配置: "+planCode, "monitor")
 
