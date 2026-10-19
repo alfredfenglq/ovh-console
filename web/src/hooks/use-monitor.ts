@@ -36,7 +36,15 @@ export interface MonitorStatus {
   check_interval: number;
   known_servers_count: number;
   /** 后端构造的区域问题提示(查错大区导致监控失效等),web 端必须渲染 */
-  region_issues?: string[];
+  region_issues?: {
+    planCode: string;
+    serverName: string;
+    accountId: string;
+    region: string;
+    subsidiary: string;
+    checkedAt: string;
+    error: string;
+  }[];
 }
 
 export interface MonitorHistoryEntry {

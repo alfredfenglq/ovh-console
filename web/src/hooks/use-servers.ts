@@ -33,14 +33,14 @@ export interface ServerPlan {
   }[];
 }
 
-/** 服务器目录（带可用性）。
+/** 服务器目录（带可用性）,accountIdOverride 用于按任务的下单账户查询。
  *  - 2 小时内不会因为 mount / 切 tab / focus 重新请求；后端 ServerCache 也是 2 小时
  *  - 后端无定时刷新：只有访问时才检查缓存是否过期，过期才会调 OVH
  *  - forceRefresh()：先 POST /cache/clear 清后端内存缓存，再走标准 q.refetch()
  *                   走 react-query 自己的请求流程，data 一定通知订阅者重渲染
  *  - isRefreshing = q.isRefetching：只在 refetch 期间为 true，跟首次加载 isLoading 严格分开
  */
-export function useServers(showApiServers: boolean = true) {
+export function useServers(showApiServers: boolean = true, accountIdOverride?: string) {
   const qc = useQueryClient();
   // 目录跟着当前账户走:后端 /api/servers 支持 ?account=,按该账户的 zone(子公司)+ endpoint
   // 取目录并单独分桶缓存。不传的话永远是默认账户的视角 —— 切到美区账户后,页面上的机型集合、
@@ -49,7 +49,8 @@ export function useServers(showApiServers: boolean = true) {
   // 而 localStorage 里可能留着已删账户的 id,那会让整页变成一条红错。
   const [activeId] = useActiveServerControlAccount();
   const { data: accounts, isPending: accountsPending } = useAccounts();
-  const accountId = findAccountByID(accounts, activeId) ? activeId : "";
+  const requestedId = accountIdOverride ?? activeId;
+  const accountId = findAccountByID(accounts, requestedId) ? requestedId : "";
   const key = qk.servers.list(showApiServers, accountId);
   const q = useQuery({
     queryKey: key,

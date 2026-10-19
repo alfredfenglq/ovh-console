@@ -18,6 +18,7 @@ import { PearlPanel, PearlPanelHead } from "@/components/pearl/ListKit";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Chip } from "@/components/common/Chip";
 import { StatusDot } from "@/components/common/StatusDot";
@@ -457,10 +458,10 @@ function CreateQueueDialog({
   initialOptions?: string;
 }) {
   const { t } = useTranslation();
-  const servers = useServers();
   const create = useCreateQueueItem();
-  // 下单账户 = 左侧菜单栏(手机端在顶栏)选的全局账户,本页不再单独选
+  // 默认跟随全局账户,本次任务可以另选账户。
   const [globalAccountId] = useActiveAccount();
+  const [selectedAccountId, setSelectedAccountId] = useState("");
   // 库存按"实际下单的那个账户"所在站点查:EU/US/CA 三站的 availabilities 互不相通
   // (实测 US 站 423 个 planCode,只有 134 个与 EU 重合),用别区的库存点红绿灯,
   // 用户会照着不存在的货建任务,然后在抢购时才被 OVH 拒。
@@ -469,8 +470,11 @@ function CreateQueueDialog({
   // 还是我们没读到账户。
   const accountsQ = useAccounts();
   const accounts = accountsQ.data;
-  const accountId = globalAccountId || accounts?.find((a) => a.isDefault)?.id || accounts?.[0]?.id || "";
+  const accountId = selectedAccountId ||
+    findAccountByID(accounts, globalAccountId)?.id ||
+    accounts?.find((a) => a.isDefault)?.id || accounts?.[0]?.id || "";
   const activeAcc = findAccountByID(accounts, accountId);
+  const servers = useServers(true, accountId);
   const orderEndpoint = activeAcc?.endpoint || "";
   const availQ = useAvailability(orderEndpoint || undefined);
   const variantIndex = useMemo(() => buildVariantIndex(availQ.data), [availQ.data]);
@@ -498,6 +502,7 @@ function CreateQueueDialog({
 
   useEffect(() => {
     if (open) {
+      setSelectedAccountId("");
       if (initialPlanCode) setPlanCode(initialPlanCode);
     }
   }, [initialPlanCode, open]);
@@ -581,12 +586,13 @@ function CreateQueueDialog({
   const orderPlan = clampOrderPlan(datacenters.length, Number(quantity) || 1);
   const qty = orderPlan.quantity;
   const totalTasks = orderPlan.total;
-  const canSubmit = !!accountId && planCode.trim().length > 0 && datacenters.length > 0 && qty > 0;
+  const canSubmit = !!activeAcc && planCode.trim().length > 0 && datacenters.length > 0 && qty > 0;
 
   const reset = () => {
     setPlanCode("");
     setDatacenters([]);
     setQuantity("1");
+    setAutoPay(false);
     touchedRef.current = false;
     setRetryInterval(String(cfgDefault));
     setPicked({});
@@ -596,6 +602,7 @@ function CreateQueueDialog({
 
   const handleClose = () => {
     if (create.isPending) return;
+    reset();
     onOpenChange(false);
   };
 
@@ -645,12 +652,35 @@ function CreateQueueDialog({
         </DialogHeader>
 
         <div className="space-y-5 py-2">
-          {/* 当前账户不在这里重复显示 —— 顶栏(手机)/侧栏(桌面)的切换器始终可见,
-              对话框打开时它也没被盖住。
-              但下面这两条要留着:一条是规则(拿错站点的 planCode 必然被拒),
-              一条是提交会被拦掉的理由,都不是"当前账户是谁"的重复。 */}
           <div>
-            <p className="text-[11px] text-muted-foreground">
+            <label htmlFor="queue-order-account" className="block text-[13px] font-medium mb-1.5">
+              {t("queue.accountLabel")}
+            </label>
+            <Select
+              value={activeAcc?.id || ""}
+              disabled={accountsQ.isPending || !accounts?.length || create.isPending}
+              onValueChange={(id) => {
+                setSelectedAccountId(id);
+                // 换账户后目录可能属于另一个站点,配置和机房须重新选择。
+                setPlanCode("");
+                setDatacenters([]);
+                setPicked({});
+                setExtraInput("");
+                prevPlanCodeRef.current = "";
+              }}
+            >
+              <SelectTrigger id="queue-order-account" aria-describedby="queue-account-rule">
+                <SelectValue placeholder={t("queue.accountPlaceholder")} />
+              </SelectTrigger>
+              <SelectContent>
+                {(accounts || []).map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name} · {a.zone} · {a.endpoint}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p id="queue-account-rule" className="text-[11px] text-muted-foreground mt-1.5">
               {t("queue.accountRule")}
             </p>
             {/* 没有账户就没法下单,底下的创建按钮会一直灰着 —— 必须讲清是"没读到"还是"真没有" */}
@@ -663,7 +693,7 @@ function CreateQueueDialog({
                 />
               </div>
             )}
-            {!accountsQ.isPending && !accountsQ.isError && !accountId && (
+            {!accountsQ.isPending && !accountsQ.isError && !accounts?.length && (
               <p className="text-[11px] text-destructive mt-1">
                 {t("queue.noAccounts")}
               </p>

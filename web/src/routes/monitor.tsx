@@ -214,7 +214,8 @@ function MonitorPage() {
         <div className="border border-warning/40 bg-warning/5 rounded-2xl p-3 space-y-1.5">
           {(status.data?.region_issues ?? []).map((issue, i) => (
             <p key={i} className="text-[12px] text-foreground/80 leading-relaxed">
-              ⚠️ {issue}
+              ⚠️ {issue.planCode}{issue.region ? ` @ ${issue.region}` : ""}
+              {issue.subsidiary ? ` (${issue.subsidiary})` : ""}: {issue.error}
             </p>
           ))}
         </div>

@@ -253,7 +253,7 @@ func RemoveSubscription(state *app.State, mon *monitor.Monitor) gin.HandlerFunc 
 		// ?optionsKey= 传了就精确删该配置组合(前端卡片级删除);
 		// 不传 = 删该 planCode 第一条(TG 等老入口兼容)
 		optionsKey := c.Query("optionsKey")
-		if !mon.RemoveSubscriptionExact(planCode, optionsKey) {
+		if mon.RemoveSubscriptionExact(planCode, optionsKey) {
 			mon.SaveToDB()
 			state.Logger.Info("删除服务器订阅: "+planCode, "")
 			c.JSON(http.StatusOK, gin.H{"status": "success", "message": "已取消订阅 " + planCode})
