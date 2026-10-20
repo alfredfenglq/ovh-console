@@ -25,7 +25,8 @@ import (
 // 会按 retryInterval 无限重试,而且每一轮都往 history 写一条失败记录 ——
 // 一个手滑选错区的任务能刷满整个抢购历史。Fatal 就是用来终止这类任务的。
 type Outcome struct {
-	Success bool
+	Success           bool
+	WaitingForCatalog bool
 	// Fatal:确定性失败,重试多少次结果都一样。队列处理器据此把任务直接置 failed。
 	// 只有"换个时间点重试也必然是同一个结果"才允许置 true ——
 	// 网络 / 429 / OVH 5xx / 无货 一律不是 Fatal。
@@ -58,7 +59,7 @@ func cancelledOutcome(state *app.State, item *types.QueueItem, stage string) Out
 // ctx 由队列处理器给,用户删任务时会被取消(app.State.MarkTaskDeleted)。
 // 结账之前的每一次 OVH 调用都挂在它上面,取消即中断;结账本身例外,见那里的注释。
 func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem) Outcome {
-	attemptStart := time.Now()  // checkout 对账用:transient 失败后按此时间查 /me/order
+	attemptStart := time.Now() // checkout 对账用:transient 失败后按此时间查 /me/order
 	client, err := state.OVH.ClientFor(item.AccountID)
 	if err != nil {
 		// 账户不存在 / 凭据缺失 / endpoint 非法 —— 都是重试一万次也不会变的错。
@@ -68,6 +69,19 @@ func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem
 		state.Logger.Error("PurchaseServer: 取 OVH client 失败 ("+item.AccountID+"): "+err.Error(), "purchase")
 		recordFailure(state, item, errMsg)
 		return Outcome{Fatal: true, Reason: errMsg}
+	}
+	if item.Preorder {
+		ready, err := catalog.PreorderReady(state, item.AccountID, item.PlanCode)
+		if ctx.Err() != nil {
+			return cancelledOutcome(state, item, "等上架")
+		}
+		if err != nil || !ready {
+			state.Logger.Info(fmt.Sprintf("预订任务 %s 等待 %s 上架到下单账户的销售目录", item.ID, item.PlanCode), "purchase")
+			if err != nil {
+				state.Logger.Warn("预订任务查询销售目录失败，本轮继续等待: "+err.Error(), "purchase")
+			}
+			return Outcome{WaitingForCatalog: true}
+		}
 	}
 
 	cartID := ""
@@ -117,11 +131,20 @@ func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem
 	// "32G+HDD 有货" 不等于 "用户要的 64G+NVMe 有货"。用户指定了硬件选项时，
 	// 只在 FQN 段集合覆盖了这些选项的条目里判有货。
 	wantedHW := fqnRelevantOptions(availabilities, item.Options)
+	if item.Preorder {
+		// 预订保存的是原始 FQN 硬件段;参数消失也不能忽略它后改买其他配置。
+		wantedHW = item.Options
+	}
 	candidates := availabilities
 	if len(wantedHW) > 0 {
 		matchedAvs := []map[string]interface{}{}
 		for _, av := range availabilities {
-			if fqn, _ := av["fqn"].(string); fqnCoversOptions(fqn, wantedHW) {
+			fqn, _ := av["fqn"].(string)
+			matches := fqnCoversOptions(fqn, wantedHW)
+			if item.Preorder {
+				matches = preorderFQNCoversOptions(fqn, wantedHW)
+			}
+			if matches {
 				matchedAvs = append(matchedAvs, av)
 			}
 		}
@@ -178,7 +201,7 @@ func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem
 	// - 用户显式指定了 options → 直接用（fail-fast 由后面的 eco/options 处理）
 	// - 用户没指定 → 从可用 FQN 推断 addon planCode，确保订单走"实际有货的那套配置"
 	effectiveOptions := item.Options
-	if len(effectiveOptions) == 0 && availableFQN != "" {
+	if (len(effectiveOptions) == 0 || item.Preorder) && availableFQN != "" {
 		parts := strings.Split(availableFQN, ".")
 		if len(parts) > 1 {
 			// 第一段是 base planCode，其余是 addon 段。注意这些段是"短前缀"
@@ -429,6 +452,9 @@ func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem
 				// planCode(第①档直接命中);用户没选配置时 filtered 是从 FQN 推来的短前缀,
 				// 精确匹配永远打不中,必须靠前缀/标准化档兜底,否则会被误判成"选项不存在"整单取消。
 				matchedOpt, matchedPC, tier := catalog.MatchEcoOption(availableEcoOpts, wanted)
+				if item.Preorder {
+					matchedOpt, matchedPC, tier = catalog.MatchPreorderEcoOption(availableEcoOpts, wanted)
+				}
 				if matchedOpt == nil {
 					missing = append(missing, wanted)
 					continue
@@ -452,6 +478,10 @@ func PurchaseServer(ctx context.Context, state *app.State, item *types.QueueItem
 				})
 			}
 			if len(missing) > 0 {
+				if item.Preorder {
+					state.Logger.Info(fmt.Sprintf("预订任务 %s 等待所选硬件配置开放: %v", item.ID, missing), "purchase")
+					return Outcome{WaitingForCatalog: true}
+				}
 				errMsg := fmt.Sprintf("用户请求的硬件选项 %v 未在 OVH 可用 Eco 选项中找到（已取消下单避免下到错误配置）", missing)
 				state.Logger.Error(errMsg, "purchase")
 				recordFailure(state, item, errMsg)
@@ -757,6 +787,26 @@ func fqnCoversOptions(fqn string, opts []string) bool {
 			}
 		}
 		if !hit {
+			return false
+		}
+	}
+	return true
+}
+
+func preorderFQNCoversOptions(fqn string, opts []string) bool {
+	parts := strings.Split(fqn, ".")
+	if len(parts) < 2 {
+		return false
+	}
+	for _, wanted := range opts {
+		found := false
+		for _, part := range parts[1:] {
+			if strings.EqualFold(part, wanted) {
+				found = true
+				break
+			}
+		}
+		if !found {
 			return false
 		}
 	}
@@ -1123,7 +1173,7 @@ func reconcileOrder(state *app.State, client *ovhsdk.Client, planCode string, si
 	var orders []map[string]interface{}
 	q := "/me/order?dateFrom=" + url.QueryEscape(since.UTC().Format("2006-01-02")) + "&planCode=" + url.QueryEscape(planCode)
 	if err := client.Get(q, &orders); err != nil {
-		state.Logger.Warn("checkout 对账查询失败(按未建单处理): " + err.Error(), "purchase")
+		state.Logger.Warn("checkout 对账查询失败(按未建单处理): "+err.Error(), "purchase")
 		return "", ""
 	}
 	for _, o := range orders {
@@ -1142,7 +1192,7 @@ func handleReconciledOrder(state *app.State, item *types.QueueItem, orderID, ord
 	state.Logger.Info("[耗时] "+item.PlanCode+"@"+item.Datacenter+" 对账确认成功 "+tl.String(), "purchase")
 	if orderID != "" {
 		// client 由调用方闭包持有;这里从 state 重新取太绕,对账成功后只补记,详情由 backfill 的另一个触发点补
-	_ = orderID // backfill 在 handleReconciledOrder 外由调用方触发
+		_ = orderID // backfill 在 handleReconciledOrder 外由调用方触发
 	}
 	return Outcome{Success: true}
 }

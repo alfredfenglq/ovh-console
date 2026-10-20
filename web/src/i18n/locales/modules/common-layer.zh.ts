@@ -261,6 +261,7 @@ export const commonLayerZh = {
       clear: "清空",
       searchPlaceholder: "搜索 planCode / 型号 / CPU / 内存...",
       noMatch: "没有匹配的服务器",
+      prerelease: "预上架",
     },
     optionGroup: {
       group: {

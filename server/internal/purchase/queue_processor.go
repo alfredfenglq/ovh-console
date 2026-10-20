@@ -291,6 +291,9 @@ func ProcessQueueLoop(state *app.State) {
 					// 用户删的,不是失败:不动 FailureCount、不置 failed,队列里也已经没有它了
 					return
 				}
+				if outcome.WaitingForCatalog {
+					return
+				}
 				if outcome.Success {
 					state.QueueMu.Lock()
 					for i := range state.Queue {

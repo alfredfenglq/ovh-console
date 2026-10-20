@@ -16,6 +16,7 @@ export interface QueueItem {
   datacenter: string;
   /** 下单成功后用 OVH 默认支付方式自动付款(显式开关,默认关) */
   autoPay?: boolean;
+  preorder?: boolean;
   options: string[];
   status: QueueStatus;
   createdAt: string;
@@ -90,6 +91,7 @@ export function useCreateQueueItem() {
       retryInterval?: number;
       quantity?: number;
       autoPay?: boolean;
+      preorder?: boolean;
     }) => {
       const dcs = payload.datacenters;
       // 上界以前完全没有:填 9999 × 5 个机房 = 近 5 万次串行 POST。
@@ -121,6 +123,7 @@ export function useCreateQueueItem() {
               retryInterval: payload.retryInterval,
               options: payload.options || [],
               autoPay: payload.autoPay ?? false,
+              preorder: payload.preorder ?? false,
             });
             success++;
           } catch (e: any) {

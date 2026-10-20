@@ -14,6 +14,7 @@ export interface ServerOption {
 }
 
 export interface ServerPlan {
+  prerelease?: boolean;
   planCode: string;
   name: string;
   description?: string;

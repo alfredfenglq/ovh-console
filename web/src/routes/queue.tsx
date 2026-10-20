@@ -55,11 +55,13 @@ import { PlanCodeCombobox } from "@/components/common/PlanCodeCombobox";
 import { OptionGroupSection } from "@/components/common/OptionGroupSection";
 import { describeOptionCodes, groupOptions, type OptionGroupKey } from "@/lib/option-groups";
 import { splitList } from "@/lib/split-list";
+import { mergeStockPlans } from "@/lib/stock-plans";
 import { clampOrderPlan, MAX_ORDER_QUANTITY, MAX_ORDER_FANOUT } from "@/lib/order-limits";
 import {
   useAvailability,
   buildVariantIndex,
   hasStockWithOption,
+  variantCoversAll,
 } from "@/hooks/use-availability";
 import { fmtDateTime } from "@/i18n/format";
 
@@ -478,6 +480,13 @@ function CreateQueueDialog({
   const orderEndpoint = activeAcc?.endpoint || "";
   const availQ = useAvailability(orderEndpoint || undefined);
   const variantIndex = useMemo(() => buildVariantIndex(availQ.data), [availQ.data]);
+  const searchServers = useMemo(
+    () => mergeStockPlans(servers.data || [], servers.isSuccess ? availQ.data : undefined),
+    [servers.data, servers.isSuccess, availQ.data]
+  );
+  useEffect(() => {
+    if (open && orderEndpoint) void availQ.refetch();
+  }, [open, orderEndpoint, availQ.refetch]);
   const [planCode, setPlanCode] = useState(initialPlanCode || "");
   const [datacenters, setDatacenters] = useState<string[]>([]);
   const [quantity, setQuantity] = useState("1");
@@ -509,8 +518,8 @@ function CreateQueueDialog({
 
   /** planCode 匹配到的服务器（用于显示名称提示） */
   const matchedServer = useMemo(
-    () => (servers.data || []).find((s) => s.planCode === planCode.trim()),
-    [servers.data, planCode]
+    () => searchServers.find((s) => s.planCode === planCode.trim()),
+    [searchServers, planCode]
   );
 
   // 切 planCode 清空 picked —— 之前选的 addon 对新机型多半不适用。
@@ -568,6 +577,8 @@ function CreateQueueDialog({
 
   // option chip 的绿/红点:跟服务器列表对话框同一套逻辑
   const variants = matchedServer ? variantIndex[matchedServer.planCode] : undefined;
+  const prereleaseMismatch = !!matchedServer?.prerelease && parsedOptions.length > 0 &&
+    !!variants && !variants.some((v) => variantCoversAll(v, parsedOptions));
   const optionHasStock = (groupKey: OptionGroupKey, value: string): boolean => {
     if (groupKey === "bandwidth" || groupKey === "vrack" || groupKey === "cpu" || groupKey === "other") {
       return true;
@@ -586,7 +597,7 @@ function CreateQueueDialog({
   const orderPlan = clampOrderPlan(datacenters.length, Number(quantity) || 1);
   const qty = orderPlan.quantity;
   const totalTasks = orderPlan.total;
-  const canSubmit = !!activeAcc && planCode.trim().length > 0 && datacenters.length > 0 && qty > 0;
+  const canSubmit = !!activeAcc && planCode.trim().length > 0 && datacenters.length > 0 && qty > 0 && !prereleaseMismatch;
 
   const reset = () => {
     setPlanCode("");
@@ -628,6 +639,7 @@ function CreateQueueDialog({
       retryInterval: Number(retryInterval) || cfgDefault,
       options: parsedOptions,
       autoPay,
+      preorder: !!matchedServer?.prerelease,
     });
     if (result.success > 0) {
       toast.success(t("queue.toast.created", { success: result.success, total: result.total }));
@@ -706,13 +718,28 @@ function CreateQueueDialog({
             <PlanCodeCombobox
               value={planCode}
               onChange={setPlanCode}
-              servers={servers.data || []}
+              servers={searchServers}
+              loading={servers.isPending || availQ.isPending}
               placeholder={t("queue.planCodePlaceholder")}
             />
             {matchedServer && (
               <p className="text-[11px] text-muted-foreground mt-1 truncate">
                 {matchedServer.cpu} · {matchedServer.memory} · {matchedServer.storage}
               </p>
+            )}
+            {matchedServer?.prerelease && (
+              <p className="text-xs text-warning mt-2" role="status">
+                {t("queue.preorderHint")}
+              </p>
+            )}
+            {availQ.isError && (
+              <div className="mt-2">
+                <LoadFailedBanner
+                  title={t("queue.stockFailedTitle")}
+                  error={availQ.error}
+                  onRetry={() => availQ.refetch()}
+                />
+              </div>
             )}
             {/* 目录没拉到 ≠ 这个站点没有机型。目录挂了下拉列表就是空的,matchedServer 也必为空,
                 界面会连着说两句假话:"没机型可选" + "catalog 里没这个型号"。
@@ -836,7 +863,9 @@ function CreateQueueDialog({
               <span className="text-muted-foreground ml-2 font-normal">
                 {/* "catalog 里没找到这个型号"是个结论,只有目录确实读到了才下得了。
                     目录还没到手 / 读失败时照说这句,用户会以为是自己型号填错了。 */}
-                {grouped
+                {matchedServer?.prerelease
+                  ? t("queue.optionsPrerelease")
+                  : grouped
                   ? t("queue.optionsChipHint")
                   : !planCode.trim()
                     ? t("queue.optionsPickFirst")
@@ -887,6 +916,9 @@ function CreateQueueDialog({
                 ))}
               </div>
             )}
+            {prereleaseMismatch && (
+              <p className="text-xs text-destructive mt-2" role="alert">{t("queue.preorderConfigMismatch")}</p>
+            )}
           </div>
 
 
@@ -924,7 +956,9 @@ function CreateQueueDialog({
             ) : (
               <>
                 <Plus className="w-4 h-4" />
-                {datacenters.length > 0 ? t("queue.createN", { n: totalTasks }) : t("queue.createAction")}
+                {matchedServer?.prerelease
+                  ? datacenters.length > 0 ? t("queue.createPreorder", { n: totalTasks }) : t("queue.createPreorderAction")
+                  : datacenters.length > 0 ? t("queue.createN", { n: totalTasks }) : t("queue.createAction")}
               </>
             )}
           </Button>
@@ -997,6 +1031,7 @@ function QueueRow({
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="font-mono font-semibold text-sm">{item.planCode}</span>
             <AccountChip accountId={item.accountId} />
+            {item.preorder && <Chip tone="warning">{t("queue.preorderBadge")}</Chip>}
             <Chip tone="default">DC {item.datacenter.toUpperCase()}</Chip>
             {item.options && item.options.length > 0 && (
               // 以前只显示个数。而一个型号底下几套配置的差别恰恰在这里 ——

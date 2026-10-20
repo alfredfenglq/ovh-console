@@ -28,7 +28,8 @@ func AddQueueItem(state *app.State) gin.HandlerFunc {
 			Options       []string `json:"options"`
 			RetryInterval int      `json:"retryInterval"`
 			// AutoPay 下单成功后用默认支付方式自动付款(显式开关,默认关)
-			AutoPay bool `json:"autoPay"`
+			AutoPay  bool `json:"autoPay"`
+			Preorder bool `json:"preorder"`
 		}
 		_ = c.ShouldBindJSON(&body)
 		if body.AccountID == "" {
@@ -52,7 +53,7 @@ func AddQueueItem(state *app.State) gin.HandlerFunc {
 		// → 按 retryInterval 永远重试,日志里永远只有一句"当前无货",用户看不出错在哪。
 		// 所以在这里就说清楚,而不是让它在后台空转到天荒地老。
 		// 探测失败(catalog.PlanVerdictUnknown)不拦 —— 一次网络瞬断不该让用户下不了单。
-		if verdict, hint := catalog.ClassifyPlan(state, body.AccountID, body.PlanCode, "queue"); hint != "" {
+		if verdict, hint := catalog.ClassifyPlan(state, body.AccountID, body.PlanCode, "queue"); hint != "" && !(body.Preorder && verdict == catalog.PlanVerdictPrerelease) {
 			state.Logger.Warn(fmt.Sprintf("[queue] 拒绝任务(判定 %d): %s", verdict, hint), "queue")
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": hint})
 			return
@@ -72,6 +73,7 @@ func AddQueueItem(state *app.State) gin.HandlerFunc {
 			RetryCount:    0,
 			LastCheckTime: 0,
 			AutoPay:       body.AutoPay,
+			Preorder:      body.Preorder,
 		}
 		// 入队 + 落库是一件事:EnqueueItems 失败会把这条从内存撤回,
 		// 不留"这次能跑但重启就丢"的半成功任务

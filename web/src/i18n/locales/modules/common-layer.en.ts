@@ -276,6 +276,7 @@ const pack: CommonLayerPack = {
       clear: "Clear",
       searchPlaceholder: "Search planCode / model / CPU / memory...",
       noMatch: "No matching servers",
+      prerelease: "Prerelease",
     },
     optionGroup: {
       group: {

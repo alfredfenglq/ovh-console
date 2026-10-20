@@ -11,7 +11,7 @@ import type { ServerPlan } from "@/hooks/use-servers";
  *  - 触发器看起来像 Input,带 chevron;选了之后显示 planCode + 服务器名
  *  - 弹层里有搜索框 + 过滤列表,每行 planCode + 名称 + CPU 简介
  *  - 键盘导航(↑↓ + Enter),Esc 关
- *  - 也支持手动输入(选错列表时输入框 fallback 走 onChange)
+ *  - 包含库存接口发现的预上架型号,标记后由队列创建预订任务
  */
 export function PlanCodeCombobox({
   value,
@@ -19,12 +19,14 @@ export function PlanCodeCombobox({
   servers,
   placeholder,
   className,
+  loading,
 }: {
   value: string;
   onChange: (planCode: string) => void;
   servers: ServerPlan[];
   placeholder?: string;
   className?: string;
+  loading?: boolean;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -110,7 +112,7 @@ export function PlanCodeCombobox({
             onWheel={(e) => e.stopPropagation()}
           >
             <Command.Empty className="py-6 text-center text-[12px] text-muted-foreground">
-              {t("commons.planCode.noMatch")}
+              {loading ? t("common.loading") : t("commons.planCode.noMatch")}
             </Command.Empty>
             {filtered.map((s) => {
               const selected = s.planCode === value;
@@ -139,6 +141,9 @@ export function PlanCodeCombobox({
                     <div className="flex items-baseline gap-2">
                       <code className="font-mono font-semibold text-[13px] truncate">{s.planCode}</code>
                       <span className="text-[12px] text-muted-foreground truncate">{s.name}</span>
+                      {s.prerelease && (
+                        <span className="text-[11px] text-warning shrink-0">{t("commons.planCode.prerelease")}</span>
+                      )}
                     </div>
                     {(s.cpu || s.memory) && (
                       <div className="text-[11px] text-muted-foreground truncate mt-0.5">

@@ -167,6 +167,7 @@ type QueueItem struct {
 	// "order will be automatically paid with preferred payment method")。
 	// 默认 false:自动扣钱必须是用户显式打开的开关,不能是隐含行为。
 	AutoPay            bool   `json:"autoPay,omitempty"`
+	Preorder           bool   `json:"preorder,omitempty"` // 本地预订:等账户销售目录上架后再尝试下单
 	ConfigSniperTaskID string `json:"configSniperTaskId,omitempty"`
 }
 

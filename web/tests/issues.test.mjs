@@ -16,6 +16,7 @@ const server = await createServer({
 after(() => server.close());
 const { Route } = await server.ssrLoadModule("/src/routes/monitor.tsx");
 const { useServers } = await server.ssrLoadModule("/src/hooks/use-servers.ts");
+const { mergeStockPlans } = await server.ssrLoadModule("/src/lib/stock-plans.ts");
 
 test("an unknown model's diagnostic does not crash the monitor page or hide deletion", () => {
   const client = new QueryClient();
@@ -91,4 +92,28 @@ test("task account override scopes the catalog cache to that account", () => {
   } finally {
     client.clear();
   }
+});
+
+test("stock-only Eco models become searchable prereleases without replacing listed plans", () => {
+  const listed = { planCode: "24sk202", name: "KS-2", availableOptions: [] };
+  const stock = (planCode, memory = "ram-32g-ddr4-ecc-2666") => ({
+    planCode, server: planCode.replace(/-v1$/, ""), memory,
+    storage: "softraid-2x480ssd", fqn: `${planCode}.${memory}.softraid-2x480ssd`,
+    datacenters: [{ datacenter: "gra", availability: "1H-low" }],
+  });
+  const merged = mergeStockPlans([listed], [
+    stock("24sk202"), stock("27skle03-v1"), stock("27skle03-v1", "ram-64g-ddr4-ecc-2666"),
+    stock("27sysstorle01-v1"), stock("25scale01-v1"),
+  ]);
+  assert.equal(merged[0], listed);
+  assert.deepEqual(merged.map((p) => p.planCode), ["24sk202", "27skle03-v1", "27sysstorle01-v1"]);
+  const found = merged.find((p) => `${p.planCode} ${p.name}`.toLowerCase().includes("27SKLE03".toLowerCase()));
+  assert.equal(found.prerelease, true);
+  assert.ok(found.memory.includes("32") && found.memory.includes("64"));
+  assert.deepEqual(found.availableOptions.map(({ value, family }) => [value, family]), [
+    ["ram-32g-ddr4-ecc-2666", "memory"],
+    ["ram-64g-ddr4-ecc-2666", "memory"],
+    ["softraid-2x480ssd", "storage"],
+  ]);
+  assert.deepEqual(mergeStockPlans([listed]), [listed]);
 });
