@@ -17,6 +17,36 @@ after(() => server.close());
 const { Route } = await server.ssrLoadModule("/src/routes/monitor.tsx");
 const { useServers } = await server.ssrLoadModule("/src/hooks/use-servers.ts");
 const { mergeStockPlans } = await server.ssrLoadModule("/src/lib/stock-plans.ts");
+const { Route: ServersRoute } = await server.ssrLoadModule("/src/routes/servers.tsx");
+
+for (const catalogState of ["ready", "pending", "error"]) {
+  test(`server list includes 27skle01-v1 from stock with sales catalog ${catalogState}`, () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retryOnMount: false } } });
+    client.setQueryData(["accounts", "list"], [
+      { id: "eu", endpoint: "ovh-eu", zone: "IE", isDefault: true },
+    ]);
+    const key = ["servers", "list", { showApiServers: true, accountId: "" }];
+    if (catalogState === "ready") client.setQueryData(key, []);
+    if (catalogState === "error") {
+      client.getQueryCache().build(client, { queryKey: key }).setState({ status: "error", error: new Error("catalog unavailable") });
+    }
+    client.setQueryData(["availability", "all", "EU"], [{
+      planCode: "27skle01-v1", server: "27skle01", memory: "ram-16g-ddr3-noecc-1333",
+      storage: "softraid-2x480ssd", fqn: "27skle01-v1.ram-16g-ddr3-noecc-1333.softraid-2x480ssd",
+      datacenters: [{ datacenter: "gra", availability: "1H-high" }],
+    }]);
+    try {
+      const html = renderToStaticMarkup(createElement(QueryClientProvider, { client },
+        createElement(ServersRoute.options.component)));
+      assert.ok(html.includes("27skle01-v1"));
+      assert.match(html, /预上架|Prerelease/);
+      assert.ok(html.includes("16 GB"));
+      if (catalogState === "error") assert.ok(html.includes("catalog unavailable"));
+    } finally {
+      client.clear();
+    }
+  });
+}
 
 test("an unknown model's diagnostic does not crash the monitor page or hide deletion", () => {
   const client = new QueryClient();

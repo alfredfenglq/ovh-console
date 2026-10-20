@@ -481,8 +481,8 @@ function CreateQueueDialog({
   const availQ = useAvailability(orderEndpoint || undefined);
   const variantIndex = useMemo(() => buildVariantIndex(availQ.data), [availQ.data]);
   const searchServers = useMemo(
-    () => mergeStockPlans(servers.data || [], servers.isSuccess ? availQ.data : undefined),
-    [servers.data, servers.isSuccess, availQ.data]
+    () => mergeStockPlans(servers.data || [], availQ.data),
+    [servers.data, availQ.data]
   );
   useEffect(() => {
     if (open && orderEndpoint) void availQ.refetch();
@@ -714,12 +714,20 @@ function CreateQueueDialog({
 
           {/* 服务器计划代码 */}
           <div>
-            <label className="block text-[13px] font-medium mb-1.5">{t("queue.planCodeLabel")}</label>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label className="block text-[13px] font-medium">{t("queue.planCodeLabel")}</label>
+              <Button type="button" variant="ghost" size="sm"
+                disabled={servers.isFetching || availQ.isFetching}
+                onClick={() => { void servers.forceRefresh(); void availQ.refetch(); }}>
+                <RefreshCw className={`w-3.5 h-3.5 ${servers.isFetching || availQ.isFetching ? "animate-spin" : ""}`} />
+                {t("queue.refreshModels")}
+              </Button>
+            </div>
             <PlanCodeCombobox
               value={planCode}
               onChange={setPlanCode}
               servers={searchServers}
-              loading={servers.isPending || availQ.isPending}
+              loading={servers.isPending || availQ.isFetching}
               placeholder={t("queue.planCodePlaceholder")}
             />
             {matchedServer && (

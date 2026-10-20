@@ -32,6 +32,7 @@ import {
   variantsForPlan,
   variantDcStatus,
   hasStockWithOption,
+  variantCoversAll,
   useOvhCatalog,
   buildCatalogIndex,
   computePriceFromOptions,
@@ -48,6 +49,7 @@ import { formatMoney, currencyUnknownHint } from "@/lib/money";
 import { useAccounts, findAccountByID } from "@/hooks/use-accounts";
 import { endpointRegion, regionLabel } from "@/lib/ovh-regions";
 import { clampOrderPlan, MAX_ORDER_QUANTITY, MAX_ORDER_FANOUT } from "@/lib/order-limits";
+import { mergeStockPlans } from "@/lib/stock-plans";
 
 /** 服务器列表：卡片网格 + 详情弹窗 */
 export const Route = createFileRoute("/servers")({
@@ -123,7 +125,7 @@ function ServersPage() {
   const [priceSort, setPriceSort] = useState<"default" | "asc" | "desc">("default");
   const [detailPlanCode, setDetailPlanCode] = useState<string | null>(null);
 
-  const list = q.data || [];
+  const list = useMemo(() => mergeStockPlans(q.data || [], availQ.data), [q.data, availQ.data]);
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     let out = list;
@@ -276,15 +278,18 @@ function ServersPage() {
           onRetry={() => availQ.refetch()}
         />
       )}
+      {q.isError && list.length > 0 && (
+        <LoadFailedBanner title={t("servers.listFailedTitle")} error={q.error} onRetry={() => q.refetch()} />
+      )}
 
       {/* 网格 */}
-      {q.isPending ? (
+      {q.isPending && list.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-[260px] rounded-2xl" />
           ))}
         </div>
-      ) : q.isError ? (
+      ) : q.isError && list.length === 0 ? (
         <Card>
           <LoadFailed
             icon={Server}
@@ -407,6 +412,7 @@ function ServerCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <h3 className="font-mono text-[15px] font-semibold truncate">{server.planCode}</h3>
+            {server.prerelease && <Chip tone="warning">{t("commons.planCode.prerelease")}</Chip>}
             <p className="text-[12px] text-muted-foreground truncate mt-0.5">{server.name}</p>
             <div className="text-[13px] font-semibold mt-1 tabular-nums">
               {price ? (
@@ -625,6 +631,8 @@ function DetailContent({
     () => (Object.values(picked).filter(Boolean) as string[]),
     [picked]
   );
+  const preorderConfigMismatch = !!server.prerelease && selectedValues.length > 0 &&
+    !!orderVariants && !orderVariants.some((v) => variantCoversAll(v, selectedValues));
 
   // 价格用的 subsidiary(顶部下拉)属于哪个站点 vs 下单账户属于哪个站点
   const priceRegion = endpointRegion(
@@ -658,6 +666,7 @@ function DetailContent({
       </DialogHeader>
 
       <div className="overflow-y-auto -mx-6 px-6 space-y-6 flex-1">
+        {server.prerelease && <p className="text-xs text-warning" role="status">{t("queue.preorderHint")}</p>}
         {/* 价格 Hero（随下方配置实时变化） */}
         <div className="border border-border rounded-2xl p-4 bg-secondary/30 flex items-end justify-between gap-3 flex-wrap">
           <div>
@@ -714,6 +723,7 @@ function DetailContent({
               onPick={(value) => setPicked((p) => ({ ...p, [g]: value }))}
             />
           ))}
+        {preorderConfigMismatch && <p className="text-xs text-destructive" role="alert">{t("queue.preorderConfigMismatch")}</p>}
 
         {/* 库存接口挂了 —— 下面的红绿点这时候不代表真实库存,必须在按下抢购之前说清楚。 */}
         {stockFailed && (
@@ -907,7 +917,7 @@ function DetailContent({
           {t("servers.detail.addToMonitor")}
         </Button>
         <Button
-          disabled={selectedDCs.length === 0 || create.isPending}
+          disabled={selectedDCs.length === 0 || create.isPending || preorderConfigMismatch}
           onClick={async () => {
             if (selectedDCs.length === 0) {
               toast.error(t("servers.toast.pickDc"));
@@ -925,6 +935,7 @@ function DetailContent({
               retryInterval: Number(retryInterval) || 60,
               options: selectedValues,
               autoPay,
+              preorder: !!server.prerelease,
             });
             if (result.success > 0) {
               toast.success(t("servers.toast.created", { success: result.success, total: result.total }));
@@ -943,7 +954,9 @@ function DetailContent({
           ) : (
             <>
               <ShoppingCart className="w-4 h-4" />
-              {selectedDCs.length > 0 ? t("servers.detail.createN", { n: totalTasks }) : t("servers.detail.create")}
+              {server.prerelease
+                ? t(selectedDCs.length > 0 ? "queue.createPreorder" : "queue.createPreorderAction", { n: totalTasks })
+                : selectedDCs.length > 0 ? t("servers.detail.createN", { n: totalTasks }) : t("servers.detail.create")}
             </>
           )}
         </Button>

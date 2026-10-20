@@ -6,7 +6,7 @@
 export const snipePagesZh = {
   servers: {
     title: "服务器列表",
-    description: "目录、价格、可用性全部走访问触发的缓存，2 小时内复用",
+    description: "包含在售与库存接口已公开的预上架型号；目录缓存 2 小时，库存独立刷新",
     refresh: "刷新",
     searchPlaceholder: "搜索 planCode / 型号 / CPU / 内存...",
     onlyAvailable: "仅显示可用",
@@ -169,6 +169,7 @@ export const snipePagesZh = {
     preorderBadge: "预订抢购",
     preorderHint: "预上架：仅在库存接口中发现，尚未进入已加载的销售目录，价格与配置仍可能变化。创建的是本地预订抢购任务，不会预留 OVH 库存；系统将等待所选账户的销售目录开放，再按所选机房和数量自动尝试下单，等待期间不消耗下单失败次数。",
     stockFailedTitle: "库存接口读取失败，预上架型号可能未显示",
+    refreshModels: "刷新型号与库存",
     creating: "创建中...",
     intervalRangeError: "重试间隔要在 {{min}} ~ {{max}} 秒之间",
     intervalEditTitle: "点击修改这条任务的重试间隔",

@@ -6,7 +6,7 @@
 export const snipePagesEn = {
   servers: {
     title: "Server List",
-    description: "Catalog, prices and availability are served from access-triggered cache, reused for 2 hours",
+    description: "Listed models and prereleases published in the stock feed; catalog cached for 2 hours, stock refreshed separately",
     refresh: "Refresh",
     searchPlaceholder: "Search planCode / model / CPU / RAM...",
     onlyAvailable: "Available only",
@@ -169,6 +169,7 @@ export const snipePagesEn = {
     preorderBadge: "Preorder",
     preorderHint: "Prerelease: found only in the stock feed, absent from the loaded sales catalog. Prices and configurations may change. This creates a local preorder task and does not reserve OVH stock. It waits for the selected account's catalog to list the model, then attempts orders for your chosen datacenters and quantity. Waiting does not count as a failed order attempt.",
     stockFailedTitle: "Failed to load stock; prerelease models may be missing",
+    refreshModels: "Refresh models and stock",
     creating: "Creating...",
     intervalRangeError: "Retry interval must be between {{min}} and {{max}} seconds",
     intervalEditTitle: "Click to edit this task's retry interval",
